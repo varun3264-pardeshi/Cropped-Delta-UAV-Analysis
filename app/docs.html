@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Technical Documentation & Deliverables Hub | CD-UAV 3.5</title>
+  <link rel="stylesheet" href="assets/css/tactical_theme.css" />
+  <style>
+    .docs-layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 1050px) {
+      .docs-layout { grid-template-columns: 1fr; }
+    }
+    .doc-section {
+      background: #090c12;
+      border: 1px solid var(--border-subtle);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .doc-section h2 {
+      font-size: 15px;
+      color: var(--gold-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-section p, .doc-section li {
+      font-size: 13px;
+      color: #9ca3af;
+      line-height: 1.7;
+    }
+    .doc-section ul {
+      margin-left: 20px;
+      margin-top: 8px;
+      margin-bottom: 12px;
+    }
+    .math-block {
+      background: #05070a;
+      border-left: 3px solid var(--gold-primary);
+      padding: 12px 16px;
+      font-family: var(--mono-font);
+      font-size: 12px;
+      color: #e5e7eb;
+      margin: 12px 0;
+      line-height: 1.6;
+      overflow-x: auto;
+    }
+    .deliverable-card {
+      background: #0d111a;
+      border: 1px solid var(--border-subtle);
+      padding: 14px;
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .deliverable-card:hover {
+      border-color: var(--gold-primary);
+      box-shadow: 0 4px 14px rgba(212, 175, 55, 0.1);
+    }
+    .dl-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dl-desc {
+      font-size: 11px;
+      color: var(--text-dim);
+      line-height: 1.4;
+    }
+    .citation-item {
+      padding: 10px;
+      background: #06080e;
+      border-left: 2px solid #2d3748;
+      margin-bottom: 8px;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .citation-item strong {
+      color: var(--gold-primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="app-sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">▲</div>
+      <div class="sidebar-title">
+        <h2>CD-UAV 3.5</h2>
+        <p>BSERC DEF-SPACE '26</p>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="simulator.html" class="nav-link">
+        <span class="nav-icon">🛩️</span> 3D Simulator
+      </a>
+      <a href="performance.html" class="nav-link">
+        <span class="nav-icon">📊</span> Aero & Trim Solver
+      </a>
+      <a href="propulsion.html" class="nav-link">
+        <span class="nav-icon">🔋</span> Propulsion & Battery
+      </a>
+      <a href="envelope.html" class="nav-link">
+        <span class="nav-icon">🔄</span> Flight Envelope
+      </a>
+      <a href="docs.html" class="nav-link active">
+        <span class="nav-icon">📄</span> Technical Docs & Export
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sys-badge">
+        <div class="sys-dot"></div>
+        <span>DOCUMENT ARCHIVE: VERIFIED</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN VIEW -->
+  <main class="app-main">
+    
+    <header class="top-bar">
+      <div class="top-title">
+        <h1>Page 5: Technical Documentation & Deliverables</h1>
+        <span class="page-tag">AEROSPACE DEFENSE CERTIFICATION DOSSIER</span>
+      </div>
+      <div class="top-meta">
+        <div>INSTITUTION: VIT BHOPAL & BSERC DEF-SPACE</div>
+        <div style="color:var(--gold-primary);">MENTOR: DR. J. SARATHKUMAR SEBASTIN</div>
+      </div>
+    </header>
+
+    <div class="page-container">
+
+      <div class="docs-layout">
+
+        <!-- TECHNICAL CONTENT & DERIVATIONS -->
+        <div>
+          
+          <div class="doc-section">
+            <h2>1. Configuration & Mathematical Foundation</h2>
+            <p>
+              The <strong>CD-UAV 3.5</strong> is a tailless, clipped (cropped) delta wing unmanned aerial vehicle designed for low-drag loiter, high-speed dash, and autonomous intelligence missions. Because tailless delta configurations lack a separate horizontal stabilizer, all pitch and roll control is performed by trailing-edge elevons acting on a reflexed camber airfoil.
+            </p>
+            
+            <div class="math-block">
+              // Wing Area & Aspect Ratio (BSERC Eq. 10.2 & 10.3)<br>
+              λ = Ct / Cr = 0.15 / 0.90 = 0.16667 (1/6)<br>
+              S = (b / 2) · Cr · (1 + λ) = (1.50 / 2) · 0.90 · (1 + 0.16667) = 0.7875 m²<br>
+              AR = b² / S = (1.50)² / 0.7875 = 2.8571 (20/7)<br>
+              k = 1 / (π · e · AR) = 1 / (π · 0.89 · 2.8571) = 0.1252
+            </div>
+
+            <div class="math-block">
+              // Mean Aerodynamic Chord (MAC, c̄) & Spanwise Location (BSERC Eq. 10.4)<br>
+              c̄ = (2 / 3) · Cr · [(1 + λ + λ²) / (1 + λ)] = (2/3) · 0.90 · [(1 + 0.1667 + 0.0278) / 1.1667] = 0.6143 m<br>
+              y_MAC = (b / 6) · [(1 + 2λ) / (1 + λ)] = (1.50 / 6) · [(1 + 2·0.1667) / 1.1667] = 0.2857 m
+            </div>
+          </div>
+
+          <div class="doc-section">
+            <h2>2. Longitudinal Trim & Static Margin Equilibrium</h2>
+            <p>
+              In unaccelerated level flight, aerodynamic and gravitational forces must satisfy simultaneous lift balance and zero pitching moment about the center of gravity ($C_m = 0$):
+            </p>
+
+            <div class="math-block">
+              // Pitching Moment Equation (Cm = 0):<br>
+              Cm = Cm0 + Cmα · α + Cmδe · δe = 0<br>
+              δe_trim = - (Cm0 + Cmα · α) / Cmδe<br>
+              <br>
+              // Lift & Velocity Equilibrium:<br>
+              CL_trim = CL0 + CLα · α + CLδe · δe_trim<br>
+              V_trim = sqrt( (2 · W) / (ρ · S · CL_trim) )<br>
+              <br>
+              // Drag Polar & Thrust/Power Required:<br>
+              CD = CD0 + k · (CL_trim)² = 0.030 + 0.1252 · (CL_trim)²<br>
+              Tr = D = q · S · CD = 0.5 · ρ · V² · S · CD<br>
+              Pr = Tr · V
+            </div>
+          </div>
+
+          <div class="doc-section">
+            <h2>3. Multi-Altitude Atmospheric Scaling (ICAO Doc 7488)</h2>
+            <p>
+              The International Standard Atmosphere (ISA) barometric formula establishes density variation across operational altitudes:
+            </p>
+
+            <div class="math-block">
+              ρ(h) = ρ0 · (1 - 2.2558 · 10⁻⁵ · h)^4.2559<br>
+              At h = 0 m (Sea Level): &nbsp;&nbsp;&nbsp;ρ = 1.2250 kg/m³<br>
+              At h = 1,000 m (Low Mtn): &nbsp;ρ = 1.1116 kg/m³ (90.7% of SL)<br>
+              At h = 2,000 m (Plateau): &nbsp;ρ = 1.0065 kg/m³ (82.2% of SL)
+            </div>
+          </div>
+
+          <div class="doc-section">
+            <h2>4. Certified Scientific Citations & Standard References</h2>
+            <div class="citation-item">
+              <strong>1. NASA TM-85767 / TP-1803:</strong> Low-Speed Aerodynamic Characteristics of a Series of Cropped Delta Wings. Established the experimental basis for reflex camber trim and vortex breakdown stability.
+            </div>
+            <div class="citation-item">
+              <strong>2. ICAO Doc 7488 / ISO 2533:</strong> Manual of the ICAO Standard Atmosphere (extended to 80 kilometres). Certified reference for density scaling equations.
+            </div>
+            <div class="citation-item">
+              <strong>3. AIAA Education Series (Daniel P. Raymer):</strong> <em>Aircraft Design: A Conceptual Approach</em>, 6th Edition. Section 12.4 (Trimmed Drag Polar) and Section 16.3 (Longitudinal Static Stability & Elevon Sizing).
+            </div>
+            <div class="citation-item">
+              <strong>4. UIUC Applied Aerodynamics Propeller Database:</strong> Wind tunnel performance test data for small electric propellers (APC 10x6 Thin Electric, η_prop = 0.72).
+            </div>
+            <div class="citation-item">
+              <strong>5. BSERC Def-Space Autumn Internship 2026:</strong> Project 4 Syllabus & Equations (Chapters 8, 10, 12, 14, 15, 16), Mentored by Dr. J. Sarathkumar Sebastin, VIT Bhopal University.
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT SIDEBAR: DELIVERABLE DOWNLOADS -->
+        <div>
+
+          <div class="tactical-card" style="margin-bottom:20px;">
+            <div class="card-title">
+              <span>PROJECT DELIVERABLES</span>
+              <span class="badge badge-gold">DIRECT ACCESS</span>
+            </div>
+            
+            <div style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">
+              All files are generated, compiled, and archived locally in your project root directory. Click below to inspect or open:
+            </div>
+
+            <div class="deliverable-card">
+              <div class="dl-title">
+                <span>MATLAB Analysis Script</span>
+                <span class="badge badge-crimson">.M</span>
+              </div>
+              <div class="dl-desc">
+                Full 25-state aerodynamic solver, ISA scaling, trim iteration, and automated generation of all 12 publication-quality plots.
+              </div>
+              <a href="../Cropped_Delta_UAV_Analysis.m" download class="btn-tactical btn-gold" style="text-align:center; text-decoration:none; margin-top:4px;">
+                Download Cropped_Delta_UAV_Analysis.m
+              </a>
+            </div>
+
+            <div class="deliverable-card">
+              <div class="dl-title">
+                <span>Excel Engineering Model</span>
+                <span class="badge badge-gold">.XLS</span>
+              </div>
+              <div class="dl-desc">
+                Parametric engineering spreadsheet with native formula links (C_m=0, V_trim, Tr, Pr, Battery sizing, and $W/S$).
+              </div>
+              <a href="../Cropped_Delta_UAV_Excel_Model.xls" download class="btn-tactical btn-gold" style="text-align:center; text-decoration:none; margin-top:4px;">
+                Download Cropped_Delta_UAV_Excel_Model.xls
+              </a>
+            </div>
+
+            <div class="deliverable-card">
+              <div class="dl-title">
+                <span>25-State CSV Trim Dataset</span>
+                <span class="badge badge-gold">.CSV</span>
+              </div>
+              <div class="dl-desc">
+                Tabular flight state data sweep from $\alpha = 0.0^\circ$ to $12.0^\circ$ ($\Delta\alpha = 0.5^\circ$) for external verification.
+              </div>
+              <a href="../Cropped_Delta_UAV_Trim_Table.csv" download class="btn-tactical btn-gold" style="text-align:center; text-decoration:none; margin-top:4px;">
+                Download Cropped_Delta_UAV_Trim_Table.csv
+              </a>
+            </div>
+
+            <div class="deliverable-card">
+              <div class="dl-title">
+                <span>Comprehensive Final Report</span>
+                <span class="badge badge-crimson">.DOCX</span>
+              </div>
+              <div class="dl-desc">
+                Formal 3.2 MB engineering report with 12 embedded 300-DPI plots, complete methodology, derivation steps, and viva references.
+              </div>
+              <a href="../Aircraft_Design_Project4_Final_Report.docx" download class="btn-tactical btn-gold" style="text-align:center; text-decoration:none; margin-top:4px;">
+                Download Final_Report.docx
+              </a>
+            </div>
+
+            <div class="deliverable-card">
+              <div class="dl-title">
+                <span>Project Defense Presentation</span>
+                <span class="badge badge-gold">.PPTX</span>
+              </div>
+              <div class="dl-desc">
+                Executive defense deck for viva examination featuring Obsidian Black & Champagne Gold aerospace command-center aesthetics.
+              </div>
+              <a href="../Cropped_Delta_UAV_Presentation.pptx" download class="btn-tactical btn-gold" style="text-align:center; text-decoration:none; margin-top:4px;">
+                Download Presentation.pptx
+              </a>
+            </div>
+
+          </div>
+
+          <!-- PROJECT AUDIT BADGE -->
+          <div class="tactical-card">
+            <div class="card-title">
+              <span>ACADEMIC VERIFICATION</span>
+              <span class="badge badge-gold">VERIFIED</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-dim); line-height:1.6;">
+              <p>• <strong>Course:</strong> BSERC Def-Space Autumn Internship 2026</p>
+              <p>• <strong>Domain:</strong> Aircraft Design Technology</p>
+              <p>• <strong>Topic:</strong> Project 4 (Cropped Delta UAV Trim Analysis)</p>
+              <p>• <strong>Computational Tooling:</strong> MATLAB, Excel, JavaScript ES6 / WebGL</p>
+              <p>• <strong>Physical Fabrication:</strong> 0% (Pure Computational & Software)</p>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 12 HIGH-RESOLUTION (300 DPI) PUBLICATION PLOTS GALLERY -->
+      <div class="tactical-card" style="margin-top:20px;">
+        <div class="card-head">
+          <h3>High-Resolution Engineering Plot Gallery (12 Figures • 300 DPI)</h3>
+          <span class="badge badge-gold">VERIFIED MATLAB / PYTHON OUTPUTS</span>
+        </div>
+        <div class="card-body">
+          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap:16px;">
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">01. Trim Elevon Deflection vs AoA</div>
+              <a href="../Plots/Plot_01_Trim_Elevator_vs_AoA.png" target="_blank"><img src="../Plots/Plot_01_Trim_Elevator_vs_AoA.png" alt="Plot 1" style="width:100%; border-radius:2px;" /></a>
+            </div>
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">02. Trim AoA &amp; Elevon vs Velocity</div>
+              <a href="../Plots/Plot_02_Trim_AoA_and_Elevator_vs_Velocity.png" target="_blank"><img src="../Plots/Plot_02_Trim_AoA_and_Elevator_vs_Velocity.png" alt="Plot 2" style="width:100%; border-radius:2px;" /></a>
+            </div>
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">03. Trimmed Lift Coefficient vs AoA &amp; V</div>
+              <a href="../Plots/Plot_03_Lift_Coefficient_vs_AoA_and_V.png" target="_blank"><img src="../Plots/Plot_03_Lift_Coefficient_vs_AoA_and_V.png" alt="Plot 3" style="width:100%; border-radius:2px;" /></a>
+            </div>
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">04. Parabolic Drag Polar &amp; Breakdown</div>
+              <a href="../Plots/Plot_04_Drag_Coefficient_vs_AoA_and_Breakdown.png" target="_blank"><img src="../Plots/Plot_04_Drag_Coefficient_vs_AoA_and_Breakdown.png" alt="Plot 4" style="width:100%; border-radius:2px;" /></a>
+            </div>
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">05. Thrust Required vs Velocity &amp; AoA</div>
+              <a href="../Plots/Plot_05_Thrust_Required_vs_Velocity_and_AoA.png" target="_blank"><img src="../Plots/Plot_05_Thrust_Required_vs_Velocity_and_AoA.png" alt="Plot 5" style="width:100%; border-radius:2px;" /></a>
+            </div>
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">06. Power Required vs Velocity &amp; AoA</div>
+              <a href="../Plots/Plot_06_Power_Required_vs_Velocity_and_AoA.png" target="_blank"><img src="../Plots/Plot_06_Power_Required_vs_Velocity_and_AoA.png" alt="Plot 6" style="width:100%; border-radius:2px;" /></a>
+            </div>
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">07. Aerodynamic Efficiency (CL/CD)</div>
+              <a href="../Plots/Plot_07_CL_CD_Ratio_vs_AoA_and_Velocity.png" target="_blank"><img src="../Plots/Plot_07_CL_CD_Ratio_vs_AoA_and_Velocity.png" alt="Plot 7" style="width:100%; border-radius:2px;" /></a>
+            </div>
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">08. Endurance Parameter (CL^1.5 / CD)</div>
+              <a href="../Plots/Plot_08_Endurance_Parameter_vs_AoA_and_Velocity.png" target="_blank"><img src="../Plots/Plot_08_Endurance_Parameter_vs_AoA_and_Velocity.png" alt="Plot 8" style="width:100%; border-radius:2px;" /></a>
+            </div>
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">09. Wing Planform Geometry &amp; MAC</div>
+              <a href="../Plots/Plot_09_Adv_Wing_Planform_Geometry.png" target="_blank"><img src="../Plots/Plot_09_Adv_Wing_Planform_Geometry.png" alt="Plot 9" style="width:100%; border-radius:2px;" /></a>
+            </div>
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">10. Multi-Altitude ISA Comparison</div>
+              <a href="../Plots/Plot_10_Adv_Multi_Altitude_ISA_Comparison.png" target="_blank"><img src="../Plots/Plot_10_Adv_Multi_Altitude_ISA_Comparison.png" alt="Plot 10" style="width:100%; border-radius:2px;" /></a>
+            </div>
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">11. 4S Li-Po Battery Range &amp; Endurance</div>
+              <a href="../Plots/Plot_11_Adv_Battery_Range_and_Endurance.png" target="_blank"><img src="../Plots/Plot_11_Adv_Battery_Range_and_Endurance.png" alt="Plot 11" style="width:100%; border-radius:2px;" /></a>
+            </div>
+            <div style="background:#080a0f; border:1px solid var(--border-card); padding:10px;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); margin-bottom:6px;">12. Static Margin &amp; Turn Envelope</div>
+              <a href="../Plots/Plot_12_Adv_Static_Margin_and_Turn_Envelope.png" target="_blank"><img src="../Plots/Plot_12_Adv_Static_Margin_and_Turn_Envelope.png" alt="Plot 12" style="width:100%; border-radius:2px;" /></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE MATLAB SOURCE CODE INSPECTOR -->
+      <div class="tactical-card" style="margin-top:20px;">
+        <div class="card-head">
+          <h3>MATLAB Solver Source Code Inspector (Cropped_Delta_UAV_Analysis.m)</h3>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-tactical" onclick="copyMatlabCode()" id="btnCopyM">📋 Copy MATLAB Code</button>
+            <a href="../Cropped_Delta_UAV_Analysis.m" download class="btn-tactical primary">⬇ Download .M File</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <pre id="matlabCodeBlock" style="background:#05070a; border:1px solid var(--border-card); padding:16px; font-family:var(--mono-font); font-size:11.5px; color:#e2e8f0; max-height:360px; overflow:auto; line-height:1.55; border-radius:3px;">%% =========================================================================
+%% BSERC DEF-SPACE AUTUMN INTERNSHIP 2026 - AIRCRAFT DESIGN PROJECT 4
+%% Trim, Thrust Required, and Power Required Analysis of a Cropped Delta Wing UAV
+%% Mentor: Dr. J. Sarathkumar Sebastin (VIT Bhopal University)
+%% =========================================================================
+clear; clc; close all;
+
+% 1. GEOMETRIC & INERTIAL INPUTS (Certified Project 4 Specification)
+Cr = 0.90;                  % Root chord [m]
+Ct = 0.15;                  % Tip chord [m]
+b  = 1.50;                  % Wingspan [m]
+e  = 0.89;                  % Oswald efficiency factor [-]
+m  = 3.50;                  % UAV takeoff mass [kg]
+g  = 10.0;                  % Gravitational acceleration [m/s^2]
+W  = m * g;                 % Weight = 35.00 N
+rho_SL = 1.225;             % ISA Sea-Level density [kg/m^3]
+
+% Derived Planform Parameters (BSERC Eq. 10.2 - 10.4)
+lambda = Ct / Cr;                                       % Taper ratio = 0.1667 (1/6)
+S  = 0.5 * b * Cr * (1 + lambda);                       % Wing area = 0.7875 m^2
+AR = (b^2) / S;                                         % Aspect ratio = 2.8571 (20/7)
+k  = 1 / (pi * e * AR);                                 % Induced drag factor = 0.1252
+MAC = (2/3) * Cr * ((1 + lambda + lambda^2)/(1 + lambda)); % MAC = 0.6143 m
+
+% 2. AERODYNAMIC & STABILITY DERIVATIVES (NASA TM-85767 & Reflex Camber)
+CD0  = 0.030;               % Zero-lift parasite drag coefficient [-]
+CL0  = 0.000;               % Zero-AoA lift coefficient [-]
+Cm0  = +0.010;              % Reflex camber zero-lift pitching moment [-]
+CLa  = 2.920;               % Lift curve slope [rad^-1]
+CLde = 0.265;               % Elevon lift derivative [rad^-1]
+Cma  = -0.292;              % Pitch stability derivative [rad^-1] (SM = 10% MAC)
+Cmde = -0.400;              % Elevon pitch control derivative [rad^-1]
+
+% 3. 25-STATE LONGITUDINAL TRIM SWEEP (alpha = 0 deg to 12 deg, step 0.5 deg)
+alpha_deg = (0.0 : 0.5 : 12.0)';
+alpha_rad = deg2rad(alpha_deg);
+
+% Pitching Moment Equilibrium (Cm = 0): Cm0 + Cma*alpha + Cmde*de = 0
+de_rad = -(Cm0 + Cma .* alpha_rad) ./ Cmde;
+de_deg = rad2deg(de_rad);
+
+% Trimmed Lift, Velocity, Drag, Thrust Required & Power Required
+CL_trim = CL0 + CLa .* alpha_rad + CLde .* de_rad;
+V_trim  = sqrt((2 * W) ./ (rho_SL * S .* CL_trim));
+CD_trim = CD0 + k .* (CL_trim .^ 2);
+Tr      = 0.5 * rho_SL .* (V_trim .^ 2) * S .* CD_trim;
+Pr      = Tr .* V_trim;
+LD      = CL_trim ./ CD_trim;
+Endur_Param = (CL_trim .^ 1.5) ./ CD_trim;
+
+% 4. ELECTRIC PROPULSION & 4S 5000mAh LI-PO SIZING
+eta_prop = 0.72; eta_elec = 0.88; P_av = 8.0; E_usable_Wh = 59.20;
+P_shaft = Pr ./ eta_prop;
+P_batt  = (P_shaft ./ eta_elec) + P_av;
+Endurance_min = (E_usable_Wh ./ P_batt) * 60;
+Range_km      = (V_trim .* (E_usable_Wh ./ P_batt) * 3600) ./ 1000;</pre>
+        </div>
+      </div>
+
+    </div>
+
+    <footer class="app-footer">
+      <div>BSERC DEF-SPACE AUTUMN INTERNSHIP 2026 &nbsp;•&nbsp; AIRCRAFT DESIGN PROJECT 4</div>
+      <div>MENTOR: DR. J. SARATHKUMAR SEBASTIN (VIT BHOPAL UNIVERSITY)</div>
+    </footer>
+
+  </main>
+
+  <script src="assets/js/aero_engine.js"></script>
+  <script>
+    function copyMatlabCode() {
+      const code = document.getElementById('matlabCodeBlock').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById('btnCopyM');
+        btn.textContent = '✔ Copied to Clipboard!';
+        setTimeout(() => { btn.textContent = '📋 Copy MATLAB Code'; }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>

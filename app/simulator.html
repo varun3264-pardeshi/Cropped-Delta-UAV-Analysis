@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced 3D Flight Simulator & CFD Wind-Tunnel | CD-UAV 3.5</title>
+  <link rel="stylesheet" href="assets/css/tactical_theme.css" />
+  <style>
+    .sim-cockpit-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr 315px;
+      gap: 16px;
+      align-items: stretch;
+    }
+    @media (max-width: 1360px) {
+      .sim-cockpit-grid { grid-template-columns: 290px 1fr; }
+      .sim-right-col { grid-column: span 2; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    }
+    @media (max-width: 980px) {
+      .sim-cockpit-grid { grid-template-columns: 1fr; }
+      .sim-right-col { grid-column: span 1; grid-template-columns: 1fr; }
+    }
+
+    .canvas-3d-stage {
+      background: #05070b;
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      min-height: 550px;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.75);
+    }
+
+    canvas#c3d {
+      width: 100%;
+      height: 550px;
+      display: block;
+      cursor: grab;
+    }
+    canvas#c3d:active { cursor: grabbing; }
+
+    .stage-top-hud {
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      pointer-events: none;
+      flex-wrap: wrap;
+    }
+
+    .shader-mode-group,
+    .cam-preset-group {
+      display: flex;
+      gap: 5px;
+      pointer-events: auto;
+      background: rgba(8, 10, 16, 0.86);
+      padding: 4px;
+      border: 1px solid var(--border-subtle);
+      border-radius: 3px;
+      backdrop-filter: blur(8px);
+    }
+
+    .mode-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--slate-muted);
+      font-family: var(--mono-font);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.16s ease;
+    }
+    .mode-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+    .mode-btn.active {
+      background: linear-gradient(180deg, rgba(212, 175, 55, 0.28), rgba(212, 175, 55, 0.12));
+      border-color: var(--gold-primary);
+      color: var(--gold-light);
+    }
+    .mode-btn.active-crimson {
+      background: linear-gradient(180deg, rgba(230, 57, 70, 0.32), rgba(230, 57, 70, 0.14));
+      border-color: var(--crimson-accent);
+      color: #ffd1d6;
+    }
+
+    .stage-bottom-hud {
+      position: absolute;
+      bottom: 12px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+      flex-wrap: wrap;
+    }
+
+    .layer-toggle-bar {
+      display: flex;
+      gap: 6px;
+      pointer-events: auto;
+      flex-wrap: wrap;
+    }
+
+    .layer-pill {
+      background: rgba(10, 13, 20, 0.88);
+      border: 1px solid var(--border-card);
+      color: var(--slate-muted);
+      font-family: var(--mono-font);
+      font-size: 10px;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.16s;
+    }
+    .layer-pill.active {
+      background: rgba(230, 57, 70, 0.20);
+      border-color: var(--crimson-accent);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .regime-status-banner {
+      padding: 8px 12px;
+      background: rgba(212, 175, 55, 0.10);
+      border: 1px solid var(--gold-primary);
+      border-radius: 3px;
+      font-family: var(--mono-font);
+      font-size: 11px;
+      color: var(--gold-light);
+      text-align: center;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    .preset-btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .sim-right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .bottom-osc-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 1024px) {
+      .bottom-osc-grid { grid-template-columns: 1fr; }
+    }
+
+    .kbd-hint {
+      display: inline-block;
+      background: #161b28;
+      border: 1px solid var(--border-subtle);
+      padding: 1px 5px;
+      border-radius: 2px;
+      font-family: var(--mono-font);
+      font-size: 9.5px;
+      color: var(--gold-light);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PERSISTENT TACTICAL SIDEBAR -->
+  <aside class="app-sidebar">
+    <a href="../index.html" class="sidebar-header">
+      <div class="sidebar-logo">▲</div>
+      <div class="sidebar-title">
+        <h2>CD-UAV 3.5</h2>
+        <p>BSERC DEF-SPACE '26</p>
+      </div>
+    </a>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Mission Modules</div>
+      <a href="../index.html" class="nav-link">
+        <span class="nav-icon">🏛️</span> Command Hub (Overview)
+      </a>
+      <a href="simulator.html" class="nav-link active">
+        <span class="nav-icon">🛩️</span> 3D Flight Simulator
+      </a>
+      <a href="performance.html" class="nav-link">
+        <span class="nav-icon">📊</span> Aero &amp; 25-State Trim
+      </a>
+      <a href="propulsion.html" class="nav-link">
+        <span class="nav-icon">🔋</span> Propulsion &amp; 4S Li-Po
+      </a>
+      <a href="envelope.html" class="nav-link">
+        <span class="nav-icon">🔄</span> V-n Envelope &amp; ISA
+      </a>
+      <a href="docs.html" class="nav-link">
+        <span class="nav-icon">📄</span> Technical Docs &amp; Export
+      </a>
+    </nav>
+
+    <div class="sidebar-specs-mini">
+      <div class="ssm-title"><span>FLIGHT STICK KEYS</span> <span>ACTIVE</span></div>
+      <div class="ssm-row"><span>Pitch α Up/Dn</span> <b>W / S Keys</b></div>
+      <div class="ssm-row"><span>Bank φ L/R</span> <b>A / D Keys</b></div>
+      <div class="ssm-row"><span>Level Reset</span> <b>R Key</b></div>
+      <div class="ssm-row"><span>3D Orbit</span> <b>Mouse Drag</b></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sys-badge">
+        <div class="sys-dot"></div>
+        <span>3D CFD &amp; PHONG: 60FPS</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN VIEWPORT -->
+  <main class="app-main">
+
+    <header class="top-bar">
+      <div class="top-title">
+        <h1>3D Stealth Flight Simulator &amp; Digital Wind-Tunnel</h1>
+        <span class="page-tag">HIGH-TESSELLATION PHONG + CFD Cp + PFD HUD</span>
+      </div>
+      <div class="top-meta">
+        <div>AIRFRAME: CD-UAV 3.5 (3.50 kg)</div>
+        <div>REFLEX CAMBER: Cm0 = +0.010</div>
+        <div style="color:var(--gold-primary);">SOLVER: EXACT TRIM (Cm = 0)</div>
+      </div>
+    </header>
+
+    <div class="page-container">
+
+      <!-- TOP 5-CHANNEL TELEMETRY STRIP -->
+      <div class="tele-strip" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="tele-box gold">
+          <div class="tele-lbl">Trimmed Airspeed (V_trim)</div>
+          <div class="tele-val" id="t-v">12.26 m/s</div>
+          <div class="tele-foot" id="t-kmh">44.1 km/h | Mach 0.036</div>
+        </div>
+        <div class="tele-box crimson">
+          <div class="tele-lbl">Elevon Deflection (δe,trim)</div>
+          <div class="tele-val" id="t-de">-5.87°</div>
+          <div class="tele-foot" id="t-margin">Actuator Reserve: 14.13°</div>
+        </div>
+        <div class="tele-box gold">
+          <div class="tele-lbl">Aerodynamic Efficiency</div>
+          <div class="tele-val" id="t-ld">8.16</div>
+          <div class="tele-foot" id="t-clcd">CL: 0.4825 | CD: 0.0591</div>
+        </div>
+        <div class="tele-box crimson">
+          <div class="tele-lbl">Thrust &amp; Aero Power</div>
+          <div class="tele-val" id="t-tr">4.29 N</div>
+          <div class="tele-foot" id="t-pr">Pr: 52.6 W | Shaft: 73.1 W</div>
+        </div>
+        <div class="tele-box emerald">
+          <div class="tele-lbl">4S 5.0Ah Endurance / Range</div>
+          <div class="tele-val" id="t-time">39.0 min</div>
+          <div class="tele-foot" id="t-range">Range: 28.69 km (80% DoD)</div>
+        </div>
+      </div>
+
+      <!-- 3-COLUMN TACTICAL COCKPIT -->
+      <div class="sim-cockpit-grid">
+
+        <!-- COLUMN 1: FLIGHT CONTROLS & PRESETS -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Flight Control Console</h3>
+            <span class="badge badge-gold">REALTIME</span>
+          </div>
+          <div class="card-body">
+
+            <div class="regime-status-banner" id="regimeBanner">
+              ★ MAX RANGE CRUISE REGIME (L/D = 8.16)
+            </div>
+
+            <div class="control-item">
+              <div class="control-label">
+                <span>Angle of Attack (α) <span class="kbd-hint">W/S</span></span>
+                <span class="v" id="v-alpha">10.00°</span>
+              </div>
+              <input type="range" id="sl-alpha" min="0" max="12" step="0.05" value="10.0" />
+            </div>
+
+            <div class="control-item">
+              <div class="control-label">
+                <span>Operating Altitude (ISA)</span>
+                <span class="v" id="v-alt">0 m</span>
+              </div>
+              <input type="range" id="sl-alt" min="0" max="2500" step="50" value="0" />
+            </div>
+
+            <div class="control-item">
+              <div class="control-label">
+                <span>Static Margin (SM % MAC)</span>
+                <span class="v" id="v-sm">10.0%</span>
+              </div>
+              <input type="range" id="sl-sm" min="4" max="16" step="0.5" value="10.0" />
+            </div>
+
+            <div class="control-item">
+              <div class="control-label">
+                <span>Coordinated Bank (ϕ) <span class="kbd-hint">A/D</span></span>
+                <span class="v" id="v-bank">0° (Level)</span>
+              </div>
+              <input type="range" id="sl-bank" min="0" max="60" step="1" value="0" />
+            </div>
+
+            <div class="control-item" style="margin-bottom:10px;">
+              <div class="control-label">
+                <span>3D Camera Zoom</span>
+                <span class="v" id="v-zoom">1.05x</span>
+              </div>
+              <input type="range" id="sl-zoom" min="0.7" max="1.5" step="0.05" value="1.05" />
+            </div>
+
+            <button class="btn-tactical primary" id="btn-sweep" style="width:100%; margin-top:4px;" onclick="toggleSweep()">
+              ▶ Run Automated Wind-Tunnel Sweep
+            </button>
+
+            <div style="font-family:var(--mono-font); font-size:10px; color:var(--gold-light); margin-top:14px; text-transform:uppercase; letter-spacing:0.5px;">
+              Certified Flight Regime Presets
+            </div>
+            <div class="preset-btn-grid">
+              <button class="btn-tactical" onclick="setPreset(1.962, 0, 10, 0)">
+                <span>SELF-TRIM (δe=0°)</span>
+              </button>
+              <button class="btn-tactical" onclick="setPreset(10.0, 0, 10, 0)">
+                <span>MAX RANGE (10°)</span>
+              </button>
+              <button class="btn-tactical" onclick="setPreset(12.0, 0, 10, 0)">
+                <span>MAX LOITER (12°)</span>
+              </button>
+              <button class="btn-tactical" onclick="setPreset(8.0, 1000, 10, 35)">
+                <span>1000M + 35° TURN</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- COLUMN 2: 3D BWB STEALTH VIEWPORT + SHADER / CAMERA CONTROLS -->
+        <div class="canvas-3d-stage">
+          <canvas id="c3d" width="880" height="550"></canvas>
+
+          <!-- TOP HUD BAR: SHADER MODES & CAMERA VIEWS -->
+          <div class="stage-top-hud">
+            <div class="shader-mode-group">
+              <button class="mode-btn active" id="sh-stealth" onclick="setShaderMode('stealth')">Stealth Carbon PBR</button>
+              <button class="mode-btn" id="sh-cfd" onclick="setShaderMode('cfd')">CFD Pressure (Cp)</button>
+              <button class="mode-btn" id="sh-xray" onclick="setShaderMode('xray')">X-Ray Spars &amp; MAC</button>
+            </div>
+
+            <div class="cam-preset-group">
+              <button class="mode-btn" onclick="setCamera(-0.34, 0.55)">3/4 Isometric</button>
+              <button class="mode-btn" onclick="setCamera(-0.18, 0.0)">Nose-On</button>
+              <button class="mode-btn" onclick="setCamera(-1.42, 0.0)">Top Planform</button>
+              <button class="mode-btn" onclick="setCamera(-0.04, 1.57)">Side Profile</button>
+              <button class="mode-btn" onclick="setCamera(-0.25, 3.14)">Rear Elevons</button>
+            </div>
+          </div>
+
+          <!-- BOTTOM HUD BAR: LAYER TOGGLES -->
+          <div class="stage-bottom-hud">
+            <div class="layer-toggle-bar">
+              <button class="layer-pill active" id="pill-flow" onclick="toggleLayer('flow')">LEV Vortices &amp; Smoke</button>
+              <button class="layer-pill active" id="pill-elevons" onclick="toggleLayer('elevons')">Elevon Hinging</button>
+              <button class="layer-pill active" id="pill-vectors" onclick="toggleLayer('vectors')">Force Vectors (L,D,T,W)</button>
+              <button class="layer-pill active" id="pill-hud" onclick="toggleLayer('hud')">Fighter PFD HUD</button>
+              <button class="layer-pill active" id="pill-grid" onclick="toggleLayer('grid')">Tunnel Grid</button>
+            </div>
+            <div style="font-family:var(--mono-font); font-size:10px; color:var(--gold-light); background:rgba(8,10,15,0.88); padding:5px 10px; border:1px solid var(--border-subtle); border-radius:3px;">
+              🖱️ Drag to Orbit 360° &nbsp;|&nbsp; Scroll to Zoom
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUMN 3: AVIONICS INSTRUMENTS & AIRFOIL WIND-TUNNEL INSET -->
+        <div class="sim-right-col">
+
+          <!-- INSTRUMENT 1: REFLEX AIRFOIL & ELEVON DEFLECTION CROSS-SECTION -->
+          <div class="tactical-card">
+            <div class="card-head">
+              <h3>Reflex Airfoil &amp; Elevon Section</h3>
+              <span class="badge badge-crimson" id="af-de-badge">δe = -5.87°</span>
+            </div>
+            <div style="padding:10px;">
+              <canvas id="airfoilCanvas" width="285" height="135" style="width:100%; height:135px; background:#06080d; border:1px solid var(--border-card); display:block;"></canvas>
+              <div style="display:flex; justify-content:space-between; font-family:var(--mono-font); font-size:9.5px; color:var(--slate-muted); margin-top:5px;">
+                <span>MAC (c̄): <b style="color:#fff;">0.6143 m</b></span>
+                <span>Cm0: <b style="color:var(--gold-light);">+0.010</b></span>
+                <span>Hinge: <b style="color:var(--crimson-bright);">0.86 c̄</b></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- INSTRUMENT 2: ATTITUDE DIRECTOR & TURN KINEMATICS -->
+          <div class="tactical-card">
+            <div class="card-head">
+              <h3>Attitude &amp; Turn Kinematics</h3>
+              <span class="badge badge-gold" id="adi-n-badge">n = 1.00 g</span>
+            </div>
+            <div style="padding:10px; display:grid; grid-template-columns: 115px 1fr; gap:10px; align-items:center;">
+              <canvas id="adiCanvas" width="115" height="115" style="width:115px; height:115px; background:#06080d; border:1px solid var(--border-card); border-radius:50%;"></canvas>
+              <div style="font-family:var(--mono-font); font-size:10.5px;">
+                <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <span style="color:var(--slate-muted);">Pitch (α):</span><b id="k-alpha" style="color:var(--gold-light);">10.00°</b>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <span style="color:var(--slate-muted);">Bank (ϕ):</span><b id="k-bank">0.0°</b>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <span style="color:var(--slate-muted);">Turn Radius:</span><b id="k-radius">∞ (Straight)</b>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <span style="color:var(--slate-muted);">Turn Rate (ω):</span><b id="k-rate">0.0 °/s</b>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:3px 0;">
+                  <span style="color:var(--slate-muted);">Dyn Press (q):</span><b id="k-q">92.1 Pa</b>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- INSTRUMENT 3: PITCH MOMENT EQUILIBRIUM VERIFIER (Cm = 0) -->
+          <div class="tactical-card">
+            <div class="card-head">
+              <h3>Moment Balance (Cm = 0)</h3>
+              <span class="badge badge-emerald">EQUILIBRIUM</span>
+            </div>
+            <div style="padding:12px; font-family:var(--mono-font); font-size:10.5px;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="color:var(--slate-muted);">Reflex Camber (Cm0):</span>
+                <b style="color:#10b981;">+0.0100</b>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="color:var(--slate-muted);">Static Stability (Cmα·α):</span>
+                <b id="m-cma" style="color:var(--crimson-bright);">-0.0510</b>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span style="color:var(--slate-muted);">Elevon Trim (Cmδe·δe):</span>
+                <b id="m-cmde" style="color:var(--gold-light);">+0.0410</b>
+              </div>
+              <div style="border-top:1px solid var(--border-subtle); padding-top:6px; display:flex; justify-content:space-between;">
+                <span style="color:#fff; font-weight:700;">Net Pitch Moment (ΣCm):</span>
+                <b style="color:#10b981;">0.0000 (Trimmed)</b>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- BOTTOM ROW: LIVE TELEMETRY OSCILLOSCOPE & PERFORMANCE CURVE TRACKER -->
+      <div class="bottom-osc-grid">
+
+        <!-- 1. REAL-TIME MULTI-CHANNEL TELEMETRY STRIP-CHART RECORDER -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Real-Time Telemetry Strip-Chart Recorder (Time-History Oscilloscope)</h3>
+            <span class="badge badge-gold">LIVE STREAM (V, L/D, Tr, δe)</span>
+          </div>
+          <div style="padding:12px;">
+            <canvas id="oscCanvas" width="640" height="165" style="width:100%; height:165px; background:#06080d; border:1px solid var(--border-card); display:block;"></canvas>
+          </div>
+        </div>
+
+        <!-- 2. LIVE OPERATING POINT ON THRUST & POWER CURVE -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Live Operating Point on Performance Envelope (Tr &amp; L/D vs α)</h3>
+            <span class="badge badge-crimson" id="op-point-badge">α = 10.0° | V = 12.26 m/s</span>
+          </div>
+          <div style="padding:12px;">
+            <canvas id="opCurveCanvas" width="520" height="165" style="width:100%; height:165px; background:#06080d; border:1px solid var(--border-card); display:block;"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <footer class="app-footer">
+      <div>BSERC DEF-SPACE AUTUMN INTERNSHIP 2026 &nbsp;•&nbsp; AIRCRAFT DESIGN PROJECT 4</div>
+      <div>MENTOR: DR. J. SARATHKUMAR SEBASTIN (VIT BHOPAL UNIVERSITY) &nbsp;•&nbsp; ENGINE: AERO_CORE.JS</div>
+    </footer>
+
+  </main>
+
+  <script src="assets/js/aero_engine.js"></script>
+  <script>
+    const slAlpha  = document.getElementById('sl-alpha');
+    const slAlt    = document.getElementById('sl-alt');
+    const slSM     = document.getElementById('sl-sm');
+    const slBank   = document.getElementById('sl-bank');
+    const slZoom   = document.getElementById('sl-zoom');
+    const btnSweep = document.getElementById('btn-sweep');
+    const c3d      = document.getElementById('c3d');
+
+    let rotX = -0.34, rotY = 0.55;
+    let isDragging = false, lastX = 0, lastY = 0;
+    let isSweeping = false, sweepDir = 1;
+    let currentShader = 'stealth';
+
+    const layers = { flow: true, elevons: true, vectors: true, hud: true, grid: true };
+
+    // Time-history buffer for oscilloscope (160 samples)
+    const historyBuf = [];
+    const MAX_HIST = 160;
+
+    function setShaderMode(mode) {
+      currentShader = mode;
+      ['stealth', 'cfd', 'xray'].forEach(m => {
+        const el = document.getElementById('sh-' + m);
+        if (el) el.className = 'mode-btn' + (m === mode ? (mode === 'cfd' ? ' active-crimson' : ' active') : '');
+      });
+    }
+
+    function toggleLayer(key) {
+      layers[key] = !layers[key];
+      document.getElementById('pill-' + key).classList.toggle('active', layers[key]);
+    }
+
+    function setCamera(rx, ry) {
+      rotX = rx;
+      rotY = ry;
+    }
+
+    // 3D Mouse Drag & Scroll Wheel Zoom
+    c3d.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
+    window.addEventListener('mouseup', () => isDragging = false);
+    window.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      rotY += (e.clientX - lastX) * 0.007;
+      rotX += (e.clientY - lastY) * 0.007;
+      rotX = Math.max(-1.48, Math.min(1.48, rotX));
+      lastX = e.clientX; lastY = e.clientY;
+    });
+    c3d.addEventListener('wheel', e => {
+      e.preventDefault();
+      let z = parseFloat(slZoom.value) - e.deltaY * 0.0008;
+      z = Math.max(0.7, Math.min(1.5, z));
+      slZoom.value = z.toFixed(2);
+      document.getElementById('v-zoom').textContent = z.toFixed(2) + 'x';
+    }, { passive: false });
+
+    // Keyboard Flight Stick Controls (W/S for Pitch AoA, A/D for Bank, R to Reset)
+    window.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT') return;
+      const k = e.key.toLowerCase();
+      if (k === 'w') {
+        slAlpha.value = Math.min(12, parseFloat(slAlpha.value) + 0.25).toFixed(2);
+        updateUI();
+      } else if (k === 's') {
+        slAlpha.value = Math.max(0, parseFloat(slAlpha.value) - 0.25).toFixed(2);
+        updateUI();
+      } else if (k === 'd') {
+        slBank.value = Math.min(60, parseFloat(slBank.value) + 2);
+        updateUI();
+      } else if (k === 'a') {
+        slBank.value = Math.max(0, parseFloat(slBank.value) - 2);
+        updateUI();
+      } else if (k === 'r') {
+        setPreset(10.0, 0, 10.0, 0);
+      }
+    });
+
+    function toggleSweep() {
+      isSweeping = !isSweeping;
+      btnSweep.textContent = isSweeping ? "⏸ Pause Automated Sweep" : "▶ Run Automated Wind-Tunnel Sweep";
+    }
+
+    function setPreset(a, alt, sm, bank) {
+      if (isSweeping) toggleSweep();
+      slAlpha.value = a; slAlt.value = alt; slSM.value = sm; slBank.value = bank;
+      updateUI();
+    }
+
+    // Draw Instrument 1: 2D Reflex Airfoil & Hinging Elevon Cross-Section
+    function drawAirfoilCrossSection(st) {
+      const can = document.getElementById('airfoilCanvas');
+      const ctx = can.getContext('2d');
+      const w = can.width, h = can.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Freestream flow lines
+      ctx.strokeStyle = 'rgba(212, 175, 55, 0.14)';
+      ctx.lineWidth = 1;
+      for (let y = 18; y < h; y += 22) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+
+      ctx.save();
+      ctx.translate(w * 0.48, h * 0.54);
+      const pitchRad = -(st.alphaDeg * Math.PI) / 180.0;
+      ctx.rotate(pitchRad);
+
+      const chordPx = 195;
+      const xLE = -chordPx * 0.48;
+      const xHinge = xLE + chordPx * 0.84;
+      const xTE = xLE + chordPx;
+
+      // Reflexed Airfoil Upper & Lower Coordinates up to hinge
+      ctx.beginPath();
+      for (let i = 0; i <= 32; i++) {
+        const xi = (i / 32) * 0.84;
+        const x = xLE + xi * chordPx;
+        const yt = 0.11 * chordPx * (1.48 * Math.sqrt(xi) - 0.63 * xi - 1.75 * xi * xi + 1.42 * xi * xi * xi - 0.5 * Math.pow(xi, 4));
+        const cam = 0.032 * chordPx * Math.sin(Math.PI * xi * 1.35) * (1 - 1.32 * xi);
+        const y = -(yt + cam);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      for (let i = 32; i >= 0; i--) {
+        const xi = (i / 32) * 0.84;
+        const x = xLE + xi * chordPx;
+        const yt = 0.11 * chordPx * (1.48 * Math.sqrt(xi) - 0.63 * xi - 1.75 * xi * xi + 1.42 * xi * xi * xi - 0.5 * Math.pow(xi, 4));
+        const cam = 0.032 * chordPx * Math.sin(Math.PI * xi * 1.35) * (1 - 1.32 * xi);
+        const y = +(yt * 0.55 - cam);
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#1b2234';
+      ctx.fill();
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      // Articulated Elevon Flap behind xHinge
+      const deflRad = (st.deDeg * 2.2 * Math.PI) / 180.0;
+      const flapLen = chordPx * 0.16;
+      const tipX = xHinge + flapLen * Math.cos(deflRad);
+      const tipY = flapLen * Math.sin(deflRad);
+
+      ctx.beginPath();
+      ctx.moveTo(xHinge, -4);
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(xHinge, +3.5);
+      ctx.closePath();
+      ctx.fillStyle = st.deDeg < 0 ? '#e63946' : '#10b981';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.3;
+      ctx.stroke();
+
+      // Hinge pin, CG, and NP markers on chord
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(xHinge, 0, 2.5, 0, Math.PI * 2); ctx.fill();
+
+      const xCG = xLE + chordPx * 0.42;
+      const xNP = xCG + chordPx * (st.smPct / 100.0);
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath(); ctx.arc(xCG, 0, 3.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#d4af37';
+      ctx.beginPath(); ctx.arc(xNP, 0, 3.8, 0, Math.PI * 2); ctx.fill();
+
+      ctx.restore();
+    }
+
+    // Draw Instrument 2: ADI Artificial Horizon Ball
+    function drawADIBall(st) {
+      const can = document.getElementById('adiCanvas');
+      const ctx = can.getContext('2d');
+      const w = can.width, h = can.height;
+      const cx = w / 2, cy = h / 2, r = w / 2 - 3;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.clip();
+
+      ctx.translate(cx, cy);
+      ctx.rotate(-(st.bankDeg * Math.PI) / 180.0);
+      const pitchShift = st.alphaDeg * 3.2;
+
+      // Sky
+      ctx.fillStyle = '#13243b';
+      ctx.fillRect(-w, -h + pitchShift, w * 2, h);
+      // Ground
+      ctx.fillStyle = '#261a14';
+      ctx.fillRect(-w, pitchShift, w * 2, h);
+      // Horizon line
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-w, pitchShift); ctx.lineTo(w, pitchShift); ctx.stroke();
+
+      // Pitch ladder rungs
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = 1;
+      [-10, -5, 5, 10].forEach(deg => {
+        const py = pitchShift - deg * 3.2;
+        ctx.beginPath(); ctx.moveTo(-16, py); ctx.lineTo(16, py); ctx.stroke();
+      });
+      ctx.restore();
+
+      // Fixed aircraft wing reference symbol
+      ctx.strokeStyle = '#e63946';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 26, cy); ctx.lineTo(cx - 8, cy); ctx.lineTo(cx - 8, cy + 5);
+      ctx.moveTo(cx + 26, cy); ctx.lineTo(cx + 8, cy); ctx.lineTo(cx + 8, cy + 5);
+      ctx.stroke();
+
+      // Outer ring
+      ctx.strokeStyle = 'rgba(212, 175, 55, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // Draw Bottom Right: Operating Point on Performance Curves
+    const refSweep = AERO_CORE.generateFullSweep(0, 10.0);
+    function drawOperatingCurve(st) {
+      const can = document.getElementById('opCurveCanvas');
+      const ctx = can.getContext('2d');
+      const w = can.width, h = can.height;
+      const padL = 38, padR = 18, padT = 16, padB = 26;
+      const pw = w - padL - padR, ph = h - padT - padB;
+      ctx.clearRect(0, 0, w, h);
+
+      // Grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      for (let i = 0; i <= 3; i++) {
+        const y = padT + (i / 3) * ph;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+      }
+
+      // L/D Curve (Gold, 0..10)
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      refSweep.forEach((s, idx) => {
+        const x = padL + (s.alphaDeg / 12.0) * pw;
+        const y = padT + ph - (s.LD / 10.0) * ph;
+        if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Endurance Parameter CL^1.5/CD Curve (Emerald, 0..10)
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      refSweep.forEach((s, idx) => {
+        const x = padL + (s.alphaDeg / 12.0) * pw;
+        const y = padT + ph - (s.endurParam / 10.0) * ph;
+        if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Current Operating Reticle
+      const curX = padL + (st.alphaDeg / 12.0) * pw;
+      const curY = padT + ph - (st.LD / 10.0) * ph;
+      ctx.strokeStyle = 'rgba(230, 57, 70, 0.55)';
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(curX, padT); ctx.lineTo(curX, padT + ph);
+      ctx.moveTo(padL, curY); ctx.lineTo(w - padR, curY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#e63946';
+      ctx.beginPath(); ctx.arc(curX, curY, 5.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.8; ctx.stroke();
+
+      // Legend & Axis
+      ctx.fillStyle = '#d4af37'; ctx.font = '10px JetBrains Mono';
+      ctx.fillText('— L/D Ratio (Max 8.16 @ 10°)', padL + 8, padT + 12);
+      ctx.fillStyle = '#10b981';
+      ctx.fillText('— CL^1.5/CD (Max 6.12 @ 12°)', padL + 210, padT + 12);
+
+      ctx.fillStyle = '#8b9bb4';
+      for (let a = 0; a <= 12; a += 2) {
+        const x = padL + (a / 12.0) * pw;
+        ctx.fillText(a + '°', x - 6, h - 7);
+      }
+    }
+
+    // Draw Bottom Left: Live Scrolling Oscilloscope
+    function drawOscilloscope() {
+      const can = document.getElementById('oscCanvas');
+      const ctx = can.getContext('2d');
+      const w = can.width, h = can.height;
+      const padL = 34, padR = 14, padT = 16, padB = 22;
+      const pw = w - padL - padR, ph = h - padT - padB;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      for (let i = 0; i <= 3; i++) {
+        const y = padT + (i / 3) * ph;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+      }
+
+      if (historyBuf.length < 2) return;
+
+      function traceChannel(fnNorm, col) {
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.9;
+        ctx.beginPath();
+        historyBuf.forEach((pt, idx) => {
+          const x = padL + (idx / (MAX_HIST - 1)) * pw;
+          const u = Math.max(0, Math.min(1, fnNorm(pt)));
+          const y = padT + ph - u * ph;
+          if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      }
+
+      traceChannel(s => s.V / 45.0, '#38bdf8');
+      traceChannel(s => s.LD / 10.0, '#d4af37');
+      traceChannel(s => (s.deDeg + 10.0) / 14.0, '#e63946');
+      traceChannel(s => s.endurMin / 50.0, '#10b981');
+
+      ctx.font = '10px JetBrains Mono';
+      ctx.fillStyle = '#38bdf8'; ctx.fillText('■ V_trim', padL + 8, padT + 11);
+      ctx.fillStyle = '#d4af37'; ctx.fillText('■ L/D', padL + 85, padT + 11);
+      ctx.fillStyle = '#e63946'; ctx.fillText('■ δe,trim', padL + 145, padT + 11);
+      ctx.fillStyle = '#10b981'; ctx.fillText('■ Endurance', padL + 225, padT + 11);
+    }
+
+    function updateUI() {
+      const a    = parseFloat(slAlpha.value);
+      const alt  = parseFloat(slAlt.value);
+      const sm   = parseFloat(slSM.value);
+      const bank = parseFloat(slBank.value);
+      const zoom = parseFloat(slZoom.value);
+
+      const st = AERO_CORE.solveFlightState(a, alt, sm, bank);
+
+      document.getElementById('v-alpha').textContent = `${a.toFixed(2)}°`;
+      document.getElementById('v-alt').textContent   = `${alt.toFixed(0)} m`;
+      document.getElementById('v-sm').textContent    = `${sm.toFixed(1)}%`;
+      document.getElementById('v-bank').textContent  = bank === 0 ? `0° (Level)` : `${bank}° Bank`;
+      document.getElementById('v-zoom').textContent  = `${zoom.toFixed(2)}x`;
+
+      document.getElementById('t-v').textContent     = `${st.V.toFixed(2)} m/s`;
+      document.getElementById('t-kmh').textContent   = `${(st.V * 3.6).toFixed(1)} km/h | Mach ${st.Mach.toFixed(3)}`;
+      document.getElementById('t-de').textContent    = `${st.deDeg >= 0 ? '+' : ''}${st.deDeg.toFixed(2)}°`;
+      document.getElementById('t-margin').textContent= `Actuator Reserve: ${st.servoMarginDeg.toFixed(2)}°`;
+      document.getElementById('t-ld').textContent    = st.LD.toFixed(2);
+      document.getElementById('t-clcd').textContent  = `CL: ${st.CL.toFixed(4)} | CD: ${st.CD.toFixed(4)}`;
+      document.getElementById('t-tr').textContent    = `${st.Tr.toFixed(2)} N`;
+      document.getElementById('t-pr').textContent    = `Pr: ${st.Pr.toFixed(1)} W | Shaft: ${st.Pshaft.toFixed(1)} W`;
+      document.getElementById('t-time').textContent  = `${st.endurMin.toFixed(1)} min`;
+      document.getElementById('t-range').textContent = `Range: ${st.rangeKm.toFixed(2)} km (80% DoD)`;
+
+      // Regime Banner
+      const rb = document.getElementById('regimeBanner');
+      if (Math.abs(st.deDeg) < 0.25) {
+        rb.textContent = '★ SELF-TRIM EQUILIBRIUM (δe ≈ 0°, ZERO TRIM DRAG)';
+      } else if (Math.abs(a - 10.0) < 0.4) {
+        rb.textContent = '★ MAX RANGE CRUISE REGIME ((L/D)_max = 8.16)';
+      } else if (a >= 11.5) {
+        rb.textContent = '★ MAX ENDURANCE LOITER REGIME (Min Power Required)';
+      } else if (bank > 5) {
+        rb.textContent = `🔄 COORDINATED BANKED TURN (${bank}° Bank | ${st.nLoad.toFixed(2)}g Load)`;
+      } else {
+        rb.textContent = `STEADY TRIMMED FLIGHT (α = ${a.toFixed(1)}°, V = ${st.V.toFixed(1)} m/s)`;
+      }
+
+      // Right Column Instruments
+      document.getElementById('af-de-badge').textContent = `δe = ${st.deDeg >= 0 ? '+' : ''}${st.deDeg.toFixed(2)}°`;
+      document.getElementById('adi-n-badge').textContent = `n = ${st.nLoad.toFixed(2)} g`;
+      document.getElementById('k-alpha').textContent     = `${a.toFixed(2)}°`;
+      document.getElementById('k-bank').textContent      = `${bank.toFixed(1)}°`;
+      document.getElementById('k-radius').textContent    = bank > 0.5 ? `${st.turnRadiusM.toFixed(1)} m` : '∞ (Straight)';
+      document.getElementById('k-rate').textContent      = `${st.turnRateDegS.toFixed(1)} °/s`;
+      document.getElementById('k-q').textContent         = `${st.qDyn.toFixed(1)} Pa`;
+
+      const Cma = -(sm / 100.0) * AERO_CORE.DERIVATIVES.CLa;
+      const mAlpha = Cma * st.alphaRad;
+      const mDe = AERO_CORE.DERIVATIVES.Cmde * st.deRad;
+      document.getElementById('m-cma').textContent  = (mAlpha >= 0 ? '+' : '') + mAlpha.toFixed(4);
+      document.getElementById('m-cmde').textContent = (mDe >= 0 ? '+' : '') + mDe.toFixed(4);
+
+      document.getElementById('op-point-badge').textContent = `α = ${a.toFixed(1)}° | V = ${st.V.toFixed(2)} m/s`;
+
+      drawAirfoilCrossSection(st);
+      drawADIBall(st);
+      drawOperatingCurve(st);
+
+      window.currentState = st;
+    }
+
+    let frameTick = 0;
+    function loop3D() {
+      if (isSweeping) {
+        let cur = parseFloat(slAlpha.value);
+        cur += sweepDir * 0.04;
+        if (cur >= 12.0) { cur = 12.0; sweepDir = -1; }
+        else if (cur <= 0.5) { cur = 0.5; sweepDir = 1; }
+        slAlpha.value = cur.toFixed(2);
+        updateUI();
+      }
+
+      const st = window.currentState || AERO_CORE.solveFlightState(10.0, 0, 10.0, 0);
+      const zoom = parseFloat(slZoom.value) || 1.05;
+
+      AERO_CORE.renderStealthDelta3D(c3d, st, rotX, rotY, {
+        visualMode: currentShader,
+        zoom: zoom,
+        showFlow: layers.flow,
+        showElevons: layers.elevons,
+        showVectors: layers.vectors,
+        showHUD: layers.hud,
+        showGrid: layers.grid
+      });
+
+      frameTick++;
+      if (frameTick % 3 === 0) {
+        historyBuf.push(st);
+        if (historyBuf.length > MAX_HIST) historyBuf.shift();
+        drawOscilloscope();
+      }
+
+      requestAnimationFrame(loop3D);
+    }
+
+    [slAlpha, slAlt, slSM, slBank, slZoom].forEach(el => el.addEventListener('input', updateUI));
+    updateUI();
+    loop3D();
+  </script>
+</body>
+</html>

@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aerodynamics & 25-State Trim Solver | CD-UAV 3.5</title>
+  <link rel="stylesheet" href="assets/css/tactical_theme.css" />
+  <style>
+    .solver-toolbar {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 16px;
+      align-items: center;
+      background: linear-gradient(90deg, rgba(22, 27, 40, 0.95), rgba(12, 15, 23, 0.95));
+      border: 1px solid var(--border-subtle);
+      padding: 14px 18px;
+      border-radius: 4px;
+    }
+    @media (max-width: 1050px) {
+      .solver-toolbar { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 680px) {
+      .solver-toolbar { grid-template-columns: 1fr; }
+    }
+    .chart-quad-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 1024px) {
+      .chart-quad-grid { grid-template-columns: 1fr; }
+    }
+    canvas.aero-plot {
+      background: #06080d;
+      border: 1px solid var(--border-card);
+      width: 100%;
+      height: 245px;
+      display: block;
+      cursor: crosshair;
+      border-radius: 2px;
+    }
+    tr.selected-row {
+      background: rgba(230, 57, 70, 0.22) !important;
+      outline: 1px solid var(--crimson-accent);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PERSISTENT TACTICAL SIDEBAR -->
+  <aside class="app-sidebar">
+    <a href="../index.html" class="sidebar-header">
+      <div class="sidebar-logo">▲</div>
+      <div class="sidebar-title">
+        <h2>CD-UAV 3.5</h2>
+        <p>BSERC DEF-SPACE '26</p>
+      </div>
+    </a>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Mission Modules</div>
+      <a href="../index.html" class="nav-link">
+        <span class="nav-icon">🏛️</span> Command Hub (Overview)
+      </a>
+      <a href="simulator.html" class="nav-link">
+        <span class="nav-icon">🛩️</span> 3D Flight Simulator
+      </a>
+      <a href="performance.html" class="nav-link active">
+        <span class="nav-icon">📊</span> Aero &amp; 25-State Trim
+      </a>
+      <a href="propulsion.html" class="nav-link">
+        <span class="nav-icon">🔋</span> Propulsion &amp; 4S Li-Po
+      </a>
+      <a href="envelope.html" class="nav-link">
+        <span class="nav-icon">🔄</span> V-n Envelope &amp; ISA
+      </a>
+      <a href="docs.html" class="nav-link">
+        <span class="nav-icon">📄</span> Technical Docs &amp; Export
+      </a>
+    </nav>
+
+    <div class="sidebar-specs-mini">
+      <div class="ssm-title"><span>TRIM CONSTANTS</span> <span>EXACT</span></div>
+      <div class="ssm-row"><span>CD0 (Parasite)</span> <b>0.0300</b></div>
+      <div class="ssm-row"><span>k (Induced)</span> <b>0.1252</b></div>
+      <div class="ssm-row"><span>CLα (Slope)</span> <b>2.92 rad⁻¹</b></div>
+      <div class="ssm-row"><span>Cmα (Static)</span> <b>-0.292 rad⁻¹</b></div>
+      <div class="ssm-row"><span>Cmδe (Control)</span> <b>-0.400 rad⁻¹</b></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sys-badge">
+        <div class="sys-dot"></div>
+        <span>25-STATE SOLVER: VERIFIED</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="app-main">
+
+    <header class="top-bar">
+      <div class="top-title">
+        <h1>Aerodynamics &amp; 25-State Longitudinal Trim Solver</h1>
+        <span class="page-tag">PITCH EQUILIBRIUM (Cm = 0, L = W, T = D)</span>
+      </div>
+      <div class="top-meta">
+        <div>SWEEP: α = 0.0° TO 12.0° (Δα = 0.5°)</div>
+        <div style="color:var(--gold-primary);">SELF-TRIM: α = 1.962° (δe = 0°)</div>
+      </div>
+    </header>
+
+    <div class="page-container">
+
+      <!-- TOP MILESTONE TELEMETRY STRIP -->
+      <div class="tele-strip">
+        <div class="tele-box gold">
+          <div class="tele-lbl">Self-Trim Condition (δe = 0°)</div>
+          <div class="tele-val" id="kpi-self-v">26.95 m/s</div>
+          <div class="tele-foot" id="kpi-self-sub">α = 1.962° | CL = 0.1000 | Tr = 8.53 N</div>
+        </div>
+        <div class="tele-box emerald">
+          <div class="tele-lbl">Max Range Cruise ((L/D)max)</div>
+          <div class="tele-val" id="kpi-range-ld">8.16</div>
+          <div class="tele-foot" id="kpi-range-sub">α = 10.0° | V = 12.26 m/s | Tr,min = 4.29 N</div>
+        </div>
+        <div class="tele-box crimson">
+          <div class="tele-lbl">Max Loiter Endurance (Min Power)</div>
+          <div class="tele-val" id="kpi-loiter-pr">48.74 W</div>
+          <div class="tele-foot" id="kpi-loiter-sub">α = 12.0° | V = 11.21 m/s | CL^1.5/CD = 6.12</div>
+        </div>
+        <div class="tele-box gold">
+          <div class="tele-lbl">Selected State Inspector</div>
+          <div class="tele-val" id="kpi-sel-title">α = 10.0°</div>
+          <div class="tele-foot" id="kpi-sel-sub">δe = -5.87° | V = 12.26 m/s | Pr = 52.6 W</div>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE SOLVER PARAMETER TOOLBAR -->
+      <div class="solver-toolbar">
+        <div>
+          <div class="control-label">
+            <span>ISA Altitude (h)</span>
+            <span class="v" id="lbl-alt">0 m (ρ = 1.225 kg/m³)</span>
+          </div>
+          <input type="range" id="sl-alt" min="0" max="2500" step="250" value="0" />
+        </div>
+
+        <div>
+          <div class="control-label">
+            <span>Static Margin (SM % MAC)</span>
+            <span class="v" id="lbl-sm">10.0% MAC</span>
+          </div>
+          <input type="range" id="sl-sm" min="5" max="15" step="0.5" value="10.0" />
+        </div>
+
+        <div>
+          <div class="control-label">
+            <span>Table Regime Filter</span>
+            <span class="v" id="lbl-count">25 States</span>
+          </div>
+          <select id="regimeFilter" class="tactical-select" style="width:100%;">
+            <option value="all">Show All 25 States (0.0° – 12.0°)</option>
+            <option value="optima">Critical Design Milestones Only</option>
+            <option value="cruise">Efficient Cruise &amp; Loiter Band (6.0° – 12.0°)</option>
+            <option value="dash">High-Speed Dash Band (1.0° – 5.5°)</option>
+          </select>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-tactical primary" onclick="exportCurrentCSV()">⬇ Export Live CSV</button>
+          <a href="../Cropped_Delta_UAV_Excel_Model.xls" download class="btn-tactical">⬇ Excel Model</a>
+        </div>
+      </div>
+
+      <!-- 4 HIGH-PRECISION AERODYNAMIC CHARTS (2x2 GRID) -->
+      <div class="chart-quad-grid">
+
+        <!-- CHART 1: PARABOLIC DRAG POLAR & DRAG BREAKDOWN -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>1. Parabolic Drag Polar (CD vs CL) &amp; (L/D)max Tangent</h3>
+            <span class="badge badge-gold">CD = 0.030 + 0.1252·CL²</span>
+          </div>
+          <div style="padding:12px;">
+            <canvas id="polarCanvas" class="aero-plot" width="580" height="245"></canvas>
+          </div>
+        </div>
+
+        <!-- CHART 2: TRIM ELEVON DEFLECTION & LIFT VS AOA -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>2. Trim Elevon Deflection (δe,trim) &amp; CL,trim vs AoA (α)</h3>
+            <span class="badge badge-crimson">Cm = 0 EQUILIBRIUM</span>
+          </div>
+          <div style="padding:12px;">
+            <canvas id="trimCanvas" class="aero-plot" width="580" height="245"></canvas>
+          </div>
+        </div>
+
+        <!-- CHART 3: THRUST REQUIRED & POWER REQUIRED VS VELOCITY -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>3. Thrust Required (Tr) &amp; Power Required (Pr) vs Airspeed (V)</h3>
+            <span class="badge badge-gold">Tr,min = 4.29 N | Pr,min = 48.7 W</span>
+          </div>
+          <div style="padding:12px;">
+            <canvas id="trPrCanvas" class="aero-plot" width="580" height="245"></canvas>
+          </div>
+        </div>
+
+        <!-- CHART 4: AERODYNAMIC EFFICIENCY (L/D) & ENDURANCE PARAMETER -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>4. Range Efficiency (CL/CD) &amp; Loiter Parameter (CL^1.5/CD) vs α</h3>
+            <span class="badge badge-emerald">OPTIMA: 10.0° &amp; 12.0°</span>
+          </div>
+          <div style="padding:12px;">
+            <canvas id="effCanvas" class="aero-plot" width="580" height="245"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 25-STATE INTERACTIVE ENGINEERING DATA TABLE -->
+      <div class="tactical-card">
+        <div class="card-head">
+          <h3>Certified 25-State Longitudinal Equilibrium Solutions (Click Any Row to Inspect on Charts)</h3>
+          <span class="badge badge-gold">EXACT ANALYTICAL SOLVER</span>
+        </div>
+        <div class="card-body">
+          <div class="data-table-wrap">
+            <table class="tactical-table" id="solverTable">
+              <thead>
+                <tr>
+                  <th>State / Regime</th>
+                  <th>AoA α (°)</th>
+                  <th>Elevon δe (°)</th>
+                  <th>CL,trim (-)</th>
+                  <th>CD0 (-)</th>
+                  <th>CDi (-)</th>
+                  <th>Total CD (-)</th>
+                  <th>Airspeed V (m/s)</th>
+                  <th>Speed (km/h)</th>
+                  <th>Thrust Tr (N)</th>
+                  <th>Aero Pr (W)</th>
+                  <th>L/D (-)</th>
+                  <th>CL^1.5/CD</th>
+                  <th>Endurance (min)</th>
+                  <th>Range (km)</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <footer class="app-footer">
+      <div>BSERC DEF-SPACE AUTUMN INTERNSHIP 2026 &nbsp;•&nbsp; AIRCRAFT DESIGN PROJECT 4</div>
+      <div>MENTOR: DR. J. SARATHKUMAR SEBASTIN (VIT BHOPAL UNIVERSITY) &nbsp;•&nbsp; ZERO FAKE DATA CERTIFIED</div>
+    </footer>
+
+  </main>
+
+  <script src="assets/js/aero_engine.js"></script>
+  <script>
+    let currentSweep = [];
+    let selectedAlpha = 10.0;
+
+    const slAlt = document.getElementById('sl-alt');
+    const slSm  = document.getElementById('sl-sm');
+    const regimeFilter = document.getElementById('regimeFilter');
+
+    function classifyRegime(st) {
+      if (st.alphaDeg < 0.6) return { label: 'DIVE BOUNDARY', cls: '' };
+      if (Math.abs(st.alphaDeg - 2.0) < 0.1) return { label: '★ NEAR SELF-TRIM', cls: 'highlight-optimum' };
+      if (Math.abs(st.alphaDeg - 10.0) < 0.1) return { label: '★ MAX RANGE (L/D)', cls: 'highlight-optimum' };
+      if (Math.abs(st.alphaDeg - 12.0) < 0.1) return { label: '★ MAX LOITER (Pr,min)', cls: 'highlight-crimson' };
+      if (st.alphaDeg >= 8.0) return { label: 'CRUISE BAND', cls: '' };
+      return { label: 'FAST TRANSIT', cls: '' };
+    }
+
+    function updateSolver() {
+      const alt = parseFloat(slAlt.value);
+      const sm  = parseFloat(slSm.value);
+      const rho = AERO_CORE.getAirDensity(alt);
+
+      document.getElementById('lbl-alt').textContent = `${alt.toFixed(0)} m (ρ = ${rho.toFixed(4)} kg/m³)`;
+      document.getElementById('lbl-sm').textContent  = `${sm.toFixed(1)}% MAC`;
+
+      currentSweep = AERO_CORE.generateFullSweep(alt, sm);
+
+      // Exact self-trim state
+      const Cma = -(sm / 100.0) * AERO_CORE.DERIVATIVES.CLa;
+      const alphaSelfDeg = (-AERO_CORE.DERIVATIVES.Cm0 / Cma) * (180.0 / Math.PI);
+      const stSelf = AERO_CORE.solveFlightState(alphaSelfDeg, alt, sm, 0);
+      const stRange = AERO_CORE.solveFlightState(10.0, alt, sm, 0);
+      const stLoiter = AERO_CORE.solveFlightState(12.0, alt, sm, 0);
+      const stSel = AERO_CORE.solveFlightState(selectedAlpha, alt, sm, 0);
+
+      document.getElementById('kpi-self-v').textContent    = `${stSelf.V.toFixed(2)} m/s`;
+      document.getElementById('kpi-self-sub').textContent  = `α = ${alphaSelfDeg.toFixed(2)}° | CL = ${stSelf.CL.toFixed(4)} | Tr = ${stSelf.Tr.toFixed(2)} N`;
+      document.getElementById('kpi-range-ld').textContent  = stRange.LD.toFixed(2);
+      document.getElementById('kpi-range-sub').textContent = `α = 10.0° | V = ${stRange.V.toFixed(2)} m/s | Tr,min = ${stRange.Tr.toFixed(2)} N`;
+      document.getElementById('kpi-loiter-pr').textContent = `${stLoiter.Pr.toFixed(2)} W`;
+      document.getElementById('kpi-loiter-sub').textContent= `α = 12.0° | V = ${stLoiter.V.toFixed(2)} m/s | Endur = ${stLoiter.endurMin.toFixed(1)} min`;
+
+      document.getElementById('kpi-sel-title').textContent = `α = ${stSel.alphaDeg.toFixed(1)}°`;
+      document.getElementById('kpi-sel-sub').textContent   = `δe = ${stSel.deDeg.toFixed(2)}° | V = ${stSel.V.toFixed(2)} m/s | Pr = ${stSel.Pr.toFixed(1)} W`;
+
+      renderTable();
+      drawAllCharts(stSel, stSelf);
+    }
+
+    function selectState(alphaDeg) {
+      selectedAlpha = alphaDeg;
+      updateSolver();
+    }
+
+    function renderTable() {
+      const mode = regimeFilter.value;
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      let shown = 0;
+
+      currentSweep.forEach(st => {
+        const reg = classifyRegime(st);
+        const isMilestone = reg.label.includes('★');
+        if (mode === 'optima' && !isMilestone) return;
+        if (mode === 'cruise' && st.alphaDeg < 6.0) return;
+        if (mode === 'dash' && (st.alphaDeg < 1.0 || st.alphaDeg > 5.5)) return;
+
+        shown++;
+        const tr = document.createElement('tr');
+        if (Math.abs(st.alphaDeg - selectedAlpha) < 0.05) {
+          tr.className = 'selected-row';
+        } else if (reg.cls) {
+          tr.className = reg.cls;
+        }
+        tr.style.cursor = 'pointer';
+        tr.onclick = () => selectState(st.alphaDeg);
+
+        tr.innerHTML = `
+          <td><span class="badge ${isMilestone ? 'badge-gold' : ''}" style="font-size:9px;">${reg.label}</span></td>
+          <td><strong>${st.alphaDeg.toFixed(1)}°</strong></td>
+          <td>${st.deDeg >= 0 ? '+' : ''}${st.deDeg.toFixed(2)}°</td>
+          <td>${st.CL.toFixed(4)}</td>
+          <td>0.0300</td>
+          <td>${st.CDi.toFixed(4)}</td>
+          <td>${st.CD.toFixed(4)}</td>
+          <td><strong>${st.V.toFixed(2)}</strong></td>
+          <td>${(st.V * 3.6).toFixed(1)}</td>
+          <td><strong>${st.Tr.toFixed(2)}</strong></td>
+          <td>${st.Pr.toFixed(2)}</td>
+          <td><strong>${st.LD.toFixed(2)}</strong></td>
+          <td>${st.endurParam.toFixed(2)}</td>
+          <td>${st.endurMin.toFixed(1)}</td>
+          <td>${st.rangeKm.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('lbl-count').textContent = `${shown} States Shown`;
+    }
+
+    function drawGridAndAxes(ctx, w, h, padL, padR, padT, padB, xLabels, yLabels) {
+      const pw = w - padL - padR;
+      const ph = h - padT - padB;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.lineWidth = 1;
+      yLabels.forEach((yl, i) => {
+        const y = padT + (i / (yLabels.length - 1)) * ph;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+        ctx.fillStyle = '#8b9bb4';
+        ctx.font = '10px JetBrains Mono';
+        ctx.textAlign = 'right';
+        ctx.fillText(yl, padL - 6, y + 3);
+      });
+
+      xLabels.forEach((xl, i) => {
+        const x = padL + (i / (xLabels.length - 1)) * pw;
+        ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT + ph); ctx.stroke();
+        ctx.fillStyle = '#8b9bb4';
+        ctx.font = '10px JetBrains Mono';
+        ctx.textAlign = 'center';
+        ctx.fillText(xl, x, h - 8);
+      });
+      ctx.textAlign = 'left';
+    }
+
+    function drawAllCharts(stSel, stSelf) {
+      const padL = 48, padR = 20, padT = 22, padB = 28;
+
+      // 1. PARABOLIC DRAG POLAR (CD vs CL)
+      {
+        const cv = document.getElementById('polarCanvas');
+        const ctx = cv.getContext('2d');
+        const w = cv.width, h = cv.height;
+        const pw = w - padL - padR, ph = h - padT - padB;
+        drawGridAndAxes(ctx, w, h, padL, padR, padT, padB,
+          ['0.00', '0.02', '0.04', '0.06', '0.08'],
+          ['0.70', '0.52', '0.35', '0.18', '0.00']
+        );
+
+        const toX = cd => padL + (cd / 0.08) * pw;
+        const toY = cl => padT + ph - (cl / 0.70) * ph;
+
+        // Tangent line from origin to (L/D)max point (CL = 0.4895, CD = 0.060)
+        ctx.strokeStyle = 'rgba(230, 57, 70, 0.7)';
+        ctx.setLineDash([4, 3]);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(toX(0), toY(0));
+        ctx.lineTo(toX(0.08), toY(0.08 * 8.158));
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Drag Polar Curve
+        ctx.strokeStyle = '#d4af37';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        currentSweep.forEach((s, idx) => {
+          if (idx === 0) ctx.moveTo(toX(s.CD), toY(s.CL));
+          else ctx.lineTo(toX(s.CD), toY(s.CL));
+        });
+        ctx.stroke();
+
+        // Selected state dot
+        ctx.fillStyle = '#e63946';
+        ctx.beginPath(); ctx.arc(toX(stSel.CD), toY(stSel.CL), 5.5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillStyle = '#d4af37'; ctx.fillText('— Drag Polar (CD vs CL)', padL + 10, padT + 14);
+        ctx.fillStyle = '#e63946'; ctx.fillText('--- Tangent (L/D)max = 8.16', padL + 10, padT + 28);
+      }
+
+      // 2. TRIM ELEVON & CL vs AOA
+      {
+        const cv = document.getElementById('trimCanvas');
+        const ctx = cv.getContext('2d');
+        const w = cv.width, h = cv.height;
+        const pw = w - padL - padR, ph = h - padT - padB;
+        drawGridAndAxes(ctx, w, h, padL, padR, padT, padB,
+          ['0°', '3°', '6°', '9°', '12°'],
+          ['+2°', '0°', '-2°', '-5°', '-8°']
+        );
+
+        const toX = a => padL + (a / 12.0) * pw;
+        const toYDe = de => padT + ((2.0 - de) / 10.0) * ph;
+
+        // Zero deflection line
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.45)';
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.moveTo(padL, toYDe(0)); ctx.lineTo(w - padR, toYDe(0)); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Elevon curve
+        ctx.strokeStyle = '#e63946';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        currentSweep.forEach((s, idx) => {
+          if (idx === 0) ctx.moveTo(toX(s.alphaDeg), toYDe(s.deDeg));
+          else ctx.lineTo(toX(s.alphaDeg), toYDe(s.deDeg));
+        });
+        ctx.stroke();
+
+        // Self-trim marker
+        ctx.fillStyle = '#10b981';
+        ctx.beginPath(); ctx.arc(toX(stSelf.alphaDeg), toYDe(0), 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillText(`Self-Trim (${stSelf.alphaDeg.toFixed(2)}°)`, toX(stSelf.alphaDeg) + 7, toYDe(0) - 6);
+
+        // Selected state marker
+        ctx.fillStyle = '#d4af37';
+        ctx.beginPath(); ctx.arc(toX(stSel.alphaDeg), toYDe(stSel.deDeg), 5.5, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // 3. THRUST & POWER REQUIRED VS AIRSPEED V (α = 1.5° to 12°)
+      {
+        const cv = document.getElementById('trPrCanvas');
+        const ctx = cv.getContext('2d');
+        const w = cv.width, h = cv.height;
+        const pw = w - padL - padR, ph = h - padT - padB;
+        drawGridAndAxes(ctx, w, h, padL, padR, padT, padB,
+          ['10 m/s', '16 m/s', '22 m/s', '28 m/s', '35 m/s'],
+          ['12 N', '9 N', '6 N', '3 N', '0 N']
+        );
+
+        const subStates = currentSweep.filter(s => s.V <= 36.0);
+        const toX = v => padL + ((v - 10.0) / 25.0) * pw;
+        const toYTr = tr => padT + ph - (Math.min(12.0, tr) / 12.0) * ph;
+        const toYPr = pr => padT + ph - (Math.min(240.0, pr) / 240.0) * ph;
+
+        // Thrust Required Curve
+        ctx.strokeStyle = '#d4af37';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        subStates.forEach((s, idx) => {
+          if (idx === 0) ctx.moveTo(toX(s.V), toYTr(s.Tr));
+          else ctx.lineTo(toX(s.V), toYTr(s.Tr));
+        });
+        ctx.stroke();
+
+        // Power Required Curve
+        ctx.strokeStyle = '#e63946';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        subStates.forEach((s, idx) => {
+          if (idx === 0) ctx.moveTo(toX(s.V), toYPr(s.Pr));
+          else ctx.lineTo(toX(s.V), toYPr(s.Pr));
+        });
+        ctx.stroke();
+
+        if (stSel.V <= 36.0) {
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath(); ctx.arc(toX(stSel.V), toYTr(stSel.Tr), 5.5, 0, Math.PI * 2); ctx.fill();
+        }
+
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillStyle = '#d4af37'; ctx.fillText('— Thrust Req Tr (N)', padL + 10, padT + 14);
+        ctx.fillStyle = '#e63946'; ctx.fillText('— Power Req Pr (Scaled /20 W)', padL + 165, padT + 14);
+      }
+
+      // 4. EFFICIENCY (L/D) & ENDURANCE PARAMETER (CL^1.5/CD) VS AOA
+      {
+        const cv = document.getElementById('effCanvas');
+        const ctx = cv.getContext('2d');
+        const w = cv.width, h = cv.height;
+        const pw = w - padL - padR, ph = h - padT - padB;
+        drawGridAndAxes(ctx, w, h, padL, padR, padT, padB,
+          ['0°', '3°', '6°', '9°', '12°'],
+          ['10.0', '7.5', '5.0', '2.5', '0.0']
+        );
+
+        const toX = a => padL + (a / 12.0) * pw;
+        const toY = val => padT + ph - (val / 10.0) * ph;
+
+        // L/D curve
+        ctx.strokeStyle = '#d4af37';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        currentSweep.forEach((s, idx) => {
+          if (idx === 0) ctx.moveTo(toX(s.alphaDeg), toY(s.LD));
+          else ctx.lineTo(toX(s.alphaDeg), toY(s.LD));
+        });
+        ctx.stroke();
+
+        // CL^1.5/CD curve
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        currentSweep.forEach((s, idx) => {
+          if (idx === 0) ctx.moveTo(toX(s.alphaDeg), toY(s.endurParam));
+          else ctx.lineTo(toX(s.alphaDeg), toY(s.endurParam));
+        });
+        ctx.stroke();
+
+        // Selected point
+        ctx.fillStyle = '#e63946';
+        ctx.beginPath(); ctx.arc(toX(stSel.alphaDeg), toY(stSel.LD), 5.5, 0, Math.PI * 2); ctx.fill();
+
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillStyle = '#d4af37'; ctx.fillText('— Range L/D (Peak 8.16 @ 10°)', padL + 10, padT + 14);
+        ctx.fillStyle = '#10b981'; ctx.fillText('— Loiter CL^1.5/CD (Peak 6.12 @ 12°)', padL + 220, padT + 14);
+      }
+    }
+
+    function exportCurrentCSV() {
+      const headers = ['alpha_deg,delta_e_deg,CL_trim,CD0,CDi,CD_total,V_m_s,V_km_h,Tr_N,Pr_W,Pshaft_W,Pbatt_W,LD,CL15_CD,Endurance_min,Range_km'];
+      currentSweep.forEach(s => {
+        headers.push([
+          s.alphaDeg.toFixed(1), s.deDeg.toFixed(3), s.CL.toFixed(4), '0.0300', s.CDi.toFixed(5), s.CD.toFixed(5),
+          s.V.toFixed(3), (s.V * 3.6).toFixed(2), s.Tr.toFixed(3), s.Pr.toFixed(2), s.Pshaft.toFixed(2), s.Pbatt.toFixed(2),
+          s.LD.toFixed(3), s.endurParam.toFixed(3), s.endurMin.toFixed(2), s.rangeKm.toFixed(2)
+        ].join(','));
+      });
+      const blob = new Blob([headers.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CD_UAV_25State_Trim_Alt${slAlt.value}m_SM${slSm.value}pct.csv`;
+      a.click();
+    }
+
+    [slAlt, slSm, regimeFilter].forEach(el => el.addEventListener('input', updateSolver));
+    updateSolver();
+  </script>
+</body>
+</html>

@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flight Envelope, Turn Dynamics & Multi-Altitude ISA | CD-UAV 3.5</title>
+  <link rel="stylesheet" href="assets/css/tactical_theme.css" />
+  <style>
+    .envelope-grid {
+      display: grid;
+      grid-template-columns: 1.18fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 1100px) {
+      .envelope-grid { grid-template-columns: 1fr; }
+    }
+    canvas.vn-canvas {
+      background: #06080d;
+      border: 1px solid var(--border-card);
+      width: 100%;
+      height: 360px;
+      display: block;
+      border-radius: 2px;
+    }
+    .turn-metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .turn-metric {
+      background: #080a0f;
+      border: 1px solid var(--border-card);
+      padding: 9px 10px;
+      text-align: center;
+      border-radius: 3px;
+    }
+    .turn-metric-val {
+      font-family: var(--mono-font);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--gold-primary);
+      margin-top: 3px;
+    }
+    .turn-metric-lbl {
+      font-size: 9.5px;
+      color: var(--slate-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-family: var(--mono-font);
+    }
+    .isa-dual-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.25fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+    @media (max-width: 1100px) {
+      .isa-dual-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PERSISTENT TACTICAL SIDEBAR -->
+  <aside class="app-sidebar">
+    <a href="../index.html" class="sidebar-header">
+      <div class="sidebar-logo">▲</div>
+      <div class="sidebar-title">
+        <h2>CD-UAV 3.5</h2>
+        <p>BSERC DEF-SPACE '26</p>
+      </div>
+    </a>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Mission Modules</div>
+      <a href="../index.html" class="nav-link">
+        <span class="nav-icon">🏛️</span> Command Hub (Overview)
+      </a>
+      <a href="simulator.html" class="nav-link">
+        <span class="nav-icon">🛩️</span> 3D Flight Simulator
+      </a>
+      <a href="performance.html" class="nav-link">
+        <span class="nav-icon">📊</span> Aero &amp; 25-State Trim
+      </a>
+      <a href="propulsion.html" class="nav-link">
+        <span class="nav-icon">🔋</span> Propulsion &amp; 4S Li-Po
+      </a>
+      <a href="envelope.html" class="nav-link active">
+        <span class="nav-icon">🔄</span> V-n Envelope &amp; ISA
+      </a>
+      <a href="docs.html" class="nav-link">
+        <span class="nav-icon">📄</span> Technical Docs &amp; Export
+      </a>
+    </nav>
+
+    <div class="sidebar-specs-mini">
+      <div class="ssm-title"><span>STRUCTURAL SPECS</span> <span>FAR 23</span></div>
+      <div class="ssm-row"><span>Positive Limit</span> <b>+3.80 g</b></div>
+      <div class="ssm-row"><span>Negative Limit</span> <b>-1.52 g</b></div>
+      <div class="ssm-row"><span>Ultimate (1.5x)</span> <b>+5.70 g</b></div>
+      <div class="ssm-row"><span>Corner Speed V*</span> <b>15.16 m/s</b></div>
+      <div class="ssm-row"><span>Dive Limit V_NE</span> <b>45.0 m/s</b></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sys-badge">
+        <div class="sys-dot"></div>
+        <span>STRUCTURAL LIMIT: +3.8g / -1.52g</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN VIEW -->
+  <main class="app-main">
+
+    <header class="top-bar">
+      <div class="top-title">
+        <h1>Flight Maneuvering V-n Envelope, Coordinated Turn &amp; Multi-Altitude ISA</h1>
+        <span class="page-tag">FAR PART 23 UTILITY &amp; ICAO DOC 7488</span>
+      </div>
+      <div class="top-meta">
+        <div>LIMIT LOAD: +3.80 g / -1.52 g</div>
+        <div style="color:var(--gold-primary);">ULTIMATE LOAD (1.5x): +5.70 g</div>
+      </div>
+    </header>
+
+    <div class="page-container">
+
+      <!-- TOP 4 KPI STRIP -->
+      <div class="tele-strip">
+        <div class="tele-box crimson">
+          <div class="tele-lbl">1g Level Stall Speed (Vs)</div>
+          <div class="tele-val">7.78 m/s</div>
+          <div class="tele-foot">28.0 km/h @ CL,max = 1.20 (Sea Level)</div>
+        </div>
+        <div class="tele-box gold">
+          <div class="tele-lbl">Maneuvering Corner Speed (V*)</div>
+          <div class="tele-val">15.16 m/s</div>
+          <div class="tele-foot">54.6 km/h (Simultaneous CL,max &amp; +3.8g)</div>
+        </div>
+        <div class="tele-box emerald">
+          <div class="tele-lbl">Max Sustained Bank Angle</div>
+          <div class="tele-val">74.7°</div>
+          <div class="tele-foot">At n_max = +3.80 g (cos⁻¹(1 / 3.80))</div>
+        </div>
+        <div class="tele-box crimson">
+          <div class="tele-lbl">Never-Exceed Dive Speed (V_NE)</div>
+          <div class="tele-val">45.0 m/s</div>
+          <div class="tele-foot">162.0 km/h | Max q_dyn = 1,240.3 Pa</div>
+        </div>
+      </div>
+
+      <!-- ENVELOPE + COORDINATED TURN SECTION -->
+      <div class="envelope-grid">
+
+        <!-- V-n DIAGRAM CANVAS -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>V-n Maneuvering Envelope (Velocity vs Load Factor n)</h3>
+            <span class="badge badge-gold">AIAA / MIL-STD-8785C</span>
+          </div>
+          <div class="card-body">
+            <canvas id="vnCanvas" class="vn-canvas" width="600" height="360"></canvas>
+            <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:11px; font-family:var(--mono-font); color:var(--slate-muted); flex-wrap:wrap; gap:8px;">
+              <span>Vs (1g Stall): <b style="color:var(--crimson-bright)">7.78 m/s</b></span>
+              <span>V_corner (Maneuver): <b style="color:var(--gold-light)">15.16 m/s</b></span>
+              <span>V_max (Level): <b style="color:#fff">28.0 m/s</b></span>
+              <span>V_NE (Dive): <b style="color:var(--crimson-bright)">45.0 m/s</b></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- COORDINATED BANKED TURN CALCULATOR + RADAR ORBIT -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Coordinated Banked Turn Simulator &amp; Ground Orbit</h3>
+            <span class="badge badge-crimson">CENTRIPETAL DYNAMICS</span>
+          </div>
+          <div class="card-body">
+
+            <div style="display:grid; grid-template-columns: 1fr 145px; gap:14px; align-items:center;">
+              <div>
+                <div class="ctrl-group">
+                  <div class="ctrl-header">
+                    <span>Bank Angle (φ)</span>
+                    <span id="bankAngleDisp" class="ctrl-value">30.0°</span>
+                  </div>
+                  <input type="range" id="bankAngleSlider" min="0" max="65" step="1" value="30" />
+                </div>
+
+                <div class="ctrl-group" style="margin-bottom:0;">
+                  <div class="ctrl-header">
+                    <span>Flight Airspeed (V)</span>
+                    <span id="bankSpeedDisp" class="ctrl-value">15.0 m/s</span>
+                  </div>
+                  <input type="range" id="bankSpeedSlider" min="9" max="35" step="0.5" value="15" />
+                </div>
+              </div>
+
+              <!-- Live Radar Turn Orbit Visualizer -->
+              <div style="text-align:center;">
+                <canvas id="turnOrbitCanvas" width="140" height="125" style="width:140px; height:125px; background:#06080d; border:1px solid var(--border-card); border-radius:3px;"></canvas>
+              </div>
+            </div>
+
+            <!-- DYNAMIC TURN METRICS -->
+            <div class="turn-metric-row">
+              <div class="turn-metric">
+                <div class="turn-metric-lbl">Load Factor (n)</div>
+                <div class="turn-metric-val" id="turnLoadFactor">1.15 g</div>
+              </div>
+              <div class="turn-metric">
+                <div class="turn-metric-lbl">Turn Radius (R)</div>
+                <div class="turn-metric-val" id="turnRadius">39.0 m</div>
+              </div>
+              <div class="turn-metric">
+                <div class="turn-metric-lbl">Turn Rate (ω)</div>
+                <div class="turn-metric-val" id="turnRate">22.0 °/s</div>
+              </div>
+            </div>
+
+            <div class="turn-metric-row" style="margin-top:10px;">
+              <div class="turn-metric">
+                <div class="turn-metric-lbl">Bank Stall Speed</div>
+                <div class="turn-metric-val" id="bankStallSpeed" style="color:#10b981;">7.46 m/s</div>
+              </div>
+              <div class="turn-metric">
+                <div class="turn-metric-lbl">Thrust Req (Turn)</div>
+                <div class="turn-metric-val" id="bankThrustReq">5.12 N</div>
+              </div>
+              <div class="turn-metric">
+                <div class="turn-metric-lbl">G-Safety Margin</div>
+                <div class="turn-metric-val" id="bankMargin" style="color:var(--gold-primary);">+2.65 g</div>
+              </div>
+            </div>
+
+            <div style="margin-top:10px; padding:8px 10px; background:#080a0f; border:1px solid var(--border-card); font-family:var(--mono-font); font-size:10.5px; color:var(--slate-muted);">
+              Equations: <code style="color:var(--gold-light);">n = 1/cos(φ)</code> &nbsp;|&nbsp; <code style="color:var(--gold-light);">R = V²/(g·tan(φ))</code> &nbsp;|&nbsp; <code style="color:var(--gold-light);">ω = (g·tan(φ))/V</code>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- MULTI-ALTITUDE ICAO ISA COMPARISON (CHART + TABLE) -->
+      <div class="isa-dual-grid">
+
+        <!-- Interactive Multi-Altitude Plot -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Multi-Altitude ISA Curves (0m, 1000m, 2000m)</h3>
+            <select id="isaPlotMode" class="tactical-select" style="padding:3px 8px; font-size:10px;" onchange="drawIsaChart()">
+              <option value="v">True Airspeed V_trim vs AoA</option>
+              <option value="pr">Aerodynamic Power Pr vs AoA</option>
+              <option value="endur">Battery Endurance (min) vs AoA</option>
+            </select>
+          </div>
+          <div class="card-body">
+            <canvas id="isaMultiCanvas" width="500" height="250" style="width:100%; height:250px; background:#06080d; border:1px solid var(--border-card); display:block;"></canvas>
+          </div>
+        </div>
+
+        <!-- Multi-Altitude Table -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>ICAO Doc 7488 Standard Atmosphere Performance Matrix</h3>
+            <span class="badge badge-gold">BAROMETRIC DENSITY SCALING</span>
+          </div>
+          <div class="card-body">
+            <div class="data-table-wrap">
+              <table class="tactical-table">
+                <thead>
+                  <tr>
+                    <th>Flight Parameter</th>
+                    <th>Sea Level (0 m, ρ=1.225)</th>
+                    <th>Low Mtn (1,000 m, ρ=1.112)</th>
+                    <th>Plateau (2,000 m, ρ=1.007)</th>
+                    <th>Altitude Scaling Law</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="color:var(--gold-light); font-weight:600;">Self-Trim Speed (α = 1.96°)</td>
+                    <td>26.95 m/s (97.0 km/h)</td>
+                    <td>28.29 m/s (101.8 km/h)</td>
+                    <td>29.73 m/s (107.0 km/h)</td>
+                    <td>V ∝ 1/√ρ (+10.3% @ 2 km)</td>
+                  </tr>
+                  <tr class="highlight-optimum">
+                    <td><strong>Max L/D Cruise Speed (α = 10°)</strong></td>
+                    <td><strong>12.26 m/s (44.1 km/h)</strong></td>
+                    <td><strong>12.87 m/s (46.3 km/h)</strong></td>
+                    <td><strong>13.52 m/s (48.7 km/h)</strong></td>
+                    <td><strong>Constant dynamic pressure q</strong></td>
+                  </tr>
+                  <tr>
+                    <td style="color:var(--gold-light); font-weight:600;">Minimum Thrust Required (Tr,min)</td>
+                    <td>4.29 N</td>
+                    <td>4.29 N</td>
+                    <td>4.29 N</td>
+                    <td>Invariant (W / (L/D)max)</td>
+                  </tr>
+                  <tr>
+                    <td style="color:var(--gold-light); font-weight:600;">Min Power Loiter Speed (α = 12°)</td>
+                    <td>11.21 m/s (40.4 km/h)</td>
+                    <td>11.77 m/s (42.4 km/h)</td>
+                    <td>12.36 m/s (44.5 km/h)</td>
+                    <td>V_loiter ∝ 1/√ρ</td>
+                  </tr>
+                  <tr>
+                    <td style="color:var(--gold-light); font-weight:600;">Minimum Shaft Power (Pshaft)</td>
+                    <td>67.69 W</td>
+                    <td>71.05 W</td>
+                    <td>74.65 W</td>
+                    <td>P ∝ 1/√ρ (+10.3% @ 2 km)</td>
+                  </tr>
+                  <tr class="highlight-crimson">
+                    <td><strong>Max Loiter Endurance (4S 5Ah)</strong></td>
+                    <td><strong>41.83 min</strong></td>
+                    <td><strong>39.85 min</strong></td>
+                    <td><strong>37.93 min</strong></td>
+                    <td><strong>-3.9 min (-9.3% reduction)</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <footer class="app-footer">
+      <div>BSERC DEF-SPACE AUTUMN INTERNSHIP 2026 &nbsp;•&nbsp; AIRCRAFT DESIGN PROJECT 4</div>
+      <div>FAR § 23.337 &amp; ICAO DOC 7488 COMPLIANT &nbsp;•&nbsp; MENTOR: DR. J. SARATHKUMAR SEBASTIN</div>
+    </footer>
+
+  </main>
+
+  <script src="assets/js/aero_engine.js"></script>
+  <script>
+    const vnCanvas = document.getElementById('vnCanvas');
+    const ctx = vnCanvas.getContext('2d');
+    const bankAngleSlider = document.getElementById('bankAngleSlider');
+    const bankSpeedSlider = document.getElementById('bankSpeedSlider');
+
+    let orbitAngle = 0;
+
+    function drawVnDiagram(currentV = 15.0, currentLoad = 1.15) {
+      const w = vnCanvas.width;
+      const h = vnCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const padLeft = 52, padRight = 26, padTop = 26, padBottom = 38;
+      const vMaxPlot = 50.0, nMaxPlot = 5.0, nMinPlot = -2.5;
+
+      const toX = v => padLeft + (v / vMaxPlot) * (w - padLeft - padRight);
+      const toY = n => padTop + ((nMaxPlot - n) / (nMaxPlot - nMinPlot)) * (h - padTop - padBottom);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 1;
+      for (let v = 0; v <= 50; v += 10) {
+        ctx.beginPath(); ctx.moveTo(toX(v), toY(nMinPlot)); ctx.lineTo(toX(v), toY(nMaxPlot)); ctx.stroke();
+        ctx.fillStyle = '#8b9bb4'; ctx.font = '10px JetBrains Mono'; ctx.textAlign = 'center';
+        ctx.fillText(v + ' m/s', toX(v), h - padBottom + 16);
+      }
+
+      for (let n = -2; n <= 4; n += 1) {
+        ctx.beginPath(); ctx.moveTo(toX(0), toY(n)); ctx.lineTo(toX(vMaxPlot), toY(n)); ctx.stroke();
+        ctx.fillStyle = '#8b9bb4'; ctx.font = '10px JetBrains Mono'; ctx.textAlign = 'right';
+        ctx.fillText((n >= 0 ? '+' : '') + n + 'g', padLeft - 8, toY(n) + 3);
+      }
+      ctx.textAlign = 'left';
+
+      // Zero-g Line
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(toX(0), toY(0)); ctx.lineTo(toX(vMaxPlot), toY(0)); ctx.stroke();
+
+      const env = AERO_CORE.generateVnEnvelope();
+      const Vcorner = env.Vcorner;
+      const Vne = 45.0;
+      const nLimitPos = 3.8;
+      const nLimitNeg = -1.52;
+      const CLmax = 1.2;
+      const rho = 1.225;
+      const S = AERO_CORE.GEOMETRY.S;
+      const W = AERO_CORE.INERTIAL.W;
+      const VcornerNeg = Math.sqrt((2 * W * Math.abs(nLimitNeg)) / (rho * S * 0.8));
+
+      // Shaded Envelope Interior
+      ctx.fillStyle = 'rgba(212, 175, 55, 0.08)';
+      ctx.beginPath();
+      ctx.moveTo(toX(0), toY(0));
+      for (let v = 0; v <= Vcorner; v += 0.4) {
+        const n = (0.5 * rho * v * v * S * CLmax) / W;
+        ctx.lineTo(toX(v), toY(Math.min(n, nLimitPos)));
+      }
+      ctx.lineTo(toX(Vne), toY(nLimitPos));
+      ctx.lineTo(toX(Vne), toY(nLimitNeg));
+      ctx.lineTo(toX(VcornerNeg), toY(nLimitNeg));
+      for (let v = VcornerNeg; v >= 0; v -= 0.4) {
+        const n = -(0.5 * rho * v * v * S * 0.8) / W;
+        ctx.lineTo(toX(v), toY(Math.max(n, nLimitNeg)));
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // Positive Stall Curve
+      ctx.beginPath();
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 2.5;
+      for (let v = 0; v <= Vcorner; v += 0.2) {
+        const n = (0.5 * rho * v * v * S * CLmax) / W;
+        if (v === 0) ctx.moveTo(toX(v), toY(0));
+        else ctx.lineTo(toX(v), toY(Math.min(n, nLimitPos)));
+      }
+      ctx.stroke();
+
+      // Positive & Negative Limit Lines
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(toX(Vcorner), toY(nLimitPos));
+      ctx.lineTo(toX(Vne), toY(nLimitPos));
+      ctx.moveTo(toX(VcornerNeg), toY(nLimitNeg));
+      ctx.lineTo(toX(Vne), toY(nLimitNeg));
+      ctx.stroke();
+
+      // V_NE Dive Boundary
+      ctx.strokeStyle = '#e63946';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(toX(Vne), toY(nLimitPos));
+      ctx.lineTo(toX(Vne), toY(nLimitNeg));
+      ctx.stroke();
+
+      // Current Operating Point
+      const ptX = toX(currentV);
+      const ptY = toY(currentLoad);
+      ctx.strokeStyle = 'rgba(230, 57, 70, 0.5)';
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(ptX, toY(nMinPlot)); ctx.lineTo(ptX, toY(nMaxPlot));
+      ctx.moveTo(toX(0), ptY); ctx.lineTo(toX(vMaxPlot), ptY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#e63946';
+      ctx.beginPath(); ctx.arc(ptX, ptY, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+
+      ctx.font = '10.5px JetBrains Mono';
+      ctx.fillStyle = '#10b981'; ctx.fillText('+CL,max Stall Boundary', toX(3), toY(2.3));
+      ctx.fillStyle = '#d4af37'; ctx.fillText('+3.80 g Limit Load (Utility)', toX(16), toY(4.05));
+      ctx.fillStyle = '#e63946'; ctx.fillText('V_NE (45 m/s)', toX(35.5), toY(0.8));
+    }
+
+    function updateTurnCalc() {
+      const phiDeg = parseFloat(bankAngleSlider.value);
+      const V = parseFloat(bankSpeedSlider.value);
+
+      document.getElementById('bankAngleDisp').textContent = phiDeg.toFixed(1) + '°';
+      document.getElementById('bankSpeedDisp').textContent = V.toFixed(1) + ' m/s';
+
+      const phiRad = phiDeg * (Math.PI / 180.0);
+      const nLoad = 1.0 / Math.cos(phiRad);
+      const g = 10.0;
+      const R = phiDeg > 0.5 ? (V * V) / (g * Math.tan(phiRad)) : 9999.0;
+      const omegaDeg = phiDeg > 0.5 ? ((g * Math.tan(phiRad)) / V) * (180.0 / Math.PI) : 0.0;
+
+      const vsBank = 7.78 * Math.sqrt(nLoad);
+      const rho = 1.225;
+      const S = AERO_CORE.GEOMETRY.S;
+      const W = AERO_CORE.INERTIAL.W;
+      const CL = (nLoad * W) / (0.5 * rho * V * V * S);
+      const CD = AERO_CORE.DERIVATIVES.CD0 + AERO_CORE.GEOMETRY.k * CL * CL;
+      const Tr = 0.5 * rho * V * V * S * CD;
+      const marginG = 3.8 - nLoad;
+
+      document.getElementById('turnLoadFactor').textContent = nLoad.toFixed(2) + ' g';
+      document.getElementById('turnRadius').textContent     = phiDeg > 0.5 ? R.toFixed(1) + ' m' : '∞ (Straight)';
+      document.getElementById('turnRate').textContent       = omegaDeg.toFixed(1) + ' °/s';
+      document.getElementById('bankStallSpeed').textContent = vsBank.toFixed(2) + ' m/s';
+      document.getElementById('bankThrustReq').textContent  = Tr.toFixed(2) + ' N';
+      const bmEl = document.getElementById('bankMargin');
+      bmEl.textContent = (marginG >= 0 ? '+' : '') + marginG.toFixed(2) + ' g';
+      bmEl.style.color = marginG > 1.0 ? '#10b981' : (marginG >= 0 ? '#d4af37' : '#e63946');
+
+      drawVnDiagram(V, nLoad);
+      window._turnParams = { phiDeg, V, R, omegaDeg };
+    }
+
+    function drawIsaChart() {
+      const mode = document.getElementById('isaPlotMode').value;
+      const cv = document.getElementById('isaMultiCanvas');
+      const ctx = cv.getContext('2d');
+      const w = cv.width, h = cv.height;
+      const padL = 46, padR = 20, padT = 22, padB = 28;
+      const pw = w - padL - padR, ph = h - padT - padB;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      for (let i = 0; i <= 4; i++) {
+        const y = padT + (i / 4) * ph;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+      }
+
+      const alts = [
+        { h: 0, col: '#ffffff', lbl: '0 m (ρ=1.225)' },
+        { h: 1000, col: '#d4af37', lbl: '1,000 m (ρ=1.112)' },
+        { h: 2000, col: '#e63946', lbl: '2,000 m (ρ=1.007)' }
+      ];
+
+      const toX = a => padL + ((a - 1.5) / 10.5) * pw;
+
+      alts.forEach((cfg, cIdx) => {
+        const sw = AERO_CORE.generateFullSweep(cfg.h, 10.0).filter(s => s.alphaDeg >= 1.5);
+        ctx.strokeStyle = cfg.col;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        sw.forEach((s, idx) => {
+          let yNorm = 0;
+          if (mode === 'v') yNorm = (s.V - 10.0) / 28.0;
+          else if (mode === 'pr') yNorm = (Math.min(350, s.Pr) - 40.0) / 310.0;
+          else yNorm = (s.endurMin - 10.0) / 35.0;
+          const x = toX(s.alphaDeg);
+          const y = padT + ph - Math.max(0, Math.min(1, yNorm)) * ph;
+          if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        ctx.fillStyle = cfg.col;
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillText('— ' + cfg.lbl, padL + 10 + cIdx * 145, padT + 13);
+      });
+
+      ctx.fillStyle = '#8b9bb4';
+      [2, 4, 6, 8, 10, 12].forEach(a => {
+        ctx.fillText(a + '°', toX(a) - 6, h - 8);
+      });
+    }
+
+    function animateOrbitRadar() {
+      const can = document.getElementById('turnOrbitCanvas');
+      const ctx = can.getContext('2d');
+      const w = can.width, h = can.height;
+      const cx = w / 2, cy = h / 2;
+      ctx.clearRect(0, 0, w, h);
+
+      // Radar rings
+      ctx.strokeStyle = 'rgba(212, 175, 55, 0.14)';
+      ctx.lineWidth = 1;
+      [18, 36, 52].forEach(r => {
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+      });
+
+      const tp = window._turnParams || { phiDeg: 30, R: 39.0, omegaDeg: 22.0 };
+      if (tp.phiDeg > 0.5) {
+        const rPx = Math.max(12, Math.min(52, (tp.R / 90.0) * 52));
+        ctx.strokeStyle = '#e63946';
+        ctx.setLineDash([3, 2]);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(cx, cy, rPx, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+
+        orbitAngle += (tp.omegaDeg * 0.0018);
+        const ux = cx + Math.cos(orbitAngle) * rPx;
+        const uy = cy + Math.sin(orbitAngle) * rPx;
+        ctx.fillStyle = '#d4af37';
+        ctx.beginPath(); ctx.arc(ux, uy, 4, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(cx, h - 10); ctx.lineTo(cx, 10); ctx.stroke();
+      }
+
+      ctx.fillStyle = '#f3e5ab';
+      ctx.font = '9px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText(tp.phiDeg > 0.5 ? `R = ${tp.R.toFixed(1)}m` : 'STRAIGHT', cx, h - 5);
+
+      requestAnimationFrame(animateOrbitRadar);
+    }
+
+    bankAngleSlider.addEventListener('input', updateTurnCalc);
+    bankSpeedSlider.addEventListener('input', updateTurnCalc);
+
+    updateTurnCalc();
+    drawIsaChart();
+    animateOrbitRadar();
+  </script>
+</body>
+</html>

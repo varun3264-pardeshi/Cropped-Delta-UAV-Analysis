@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Propulsion, 4S Li-Po Battery & Mass Closure | CD-UAV 3.5</title>
+  <link rel="stylesheet" href="assets/css/tactical_theme.css" />
+  <style>
+    .power-chain-strip {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+      gap: 10px;
+      align-items: center;
+      background: linear-gradient(90deg, rgba(16, 20, 30, 0.96), rgba(22, 28, 42, 0.96));
+      border: 1px solid var(--border-subtle);
+      padding: 16px;
+      border-radius: 4px;
+    }
+    @media (max-width: 1100px) {
+      .power-chain-strip { grid-template-columns: 1fr; }
+      .chain-arrow { transform: rotate(90deg); text-align: center; }
+    }
+    .chain-node {
+      background: #080a0f;
+      border: 1px solid var(--border-card);
+      padding: 12px 14px;
+      border-radius: 3px;
+      text-align: center;
+    }
+    .chain-node .cn-title {
+      font-family: var(--mono-font);
+      font-size: 10px;
+      color: var(--slate-muted);
+      text-transform: uppercase;
+    }
+    .chain-node .cn-val {
+      font-family: var(--mono-font);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gold-light);
+      margin: 4px 0;
+    }
+    .chain-node .cn-sub {
+      font-family: var(--mono-font);
+      font-size: 10px;
+      color: var(--emerald-accent);
+    }
+    .chain-arrow {
+      font-family: var(--mono-font);
+      font-size: 11px;
+      color: var(--gold-primary);
+      text-align: center;
+      padding: 0 4px;
+    }
+
+    .prop-dual-grid {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 1100px) {
+      .prop-dual-grid { grid-template-columns: 1fr; }
+    }
+
+    .charts-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 980px) {
+      .charts-two-col { grid-template-columns: 1fr; }
+    }
+
+    canvas.prop-plot {
+      background: #06080d;
+      border: 1px solid var(--border-card);
+      width: 100%;
+      height: 240px;
+      display: block;
+    }
+
+    .progress-bar-wrap {
+      margin-bottom: 13px;
+      font-family: var(--mono-font);
+      font-size: 11px;
+    }
+    .bar-head {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+      color: var(--slate-body);
+    }
+    .bar-track {
+      width: 100%;
+      height: 8px;
+      background: #080a0f;
+      border: 1px solid var(--border-card);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background: var(--gold-primary);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PERSISTENT TACTICAL SIDEBAR -->
+  <aside class="app-sidebar">
+    <a href="../index.html" class="sidebar-header">
+      <div class="sidebar-logo">▲</div>
+      <div class="sidebar-title">
+        <h2>CD-UAV 3.5</h2>
+        <p>BSERC DEF-SPACE '26</p>
+      </div>
+    </a>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Mission Modules</div>
+      <a href="../index.html" class="nav-link">
+        <span class="nav-icon">🏛️</span> Command Hub (Overview)
+      </a>
+      <a href="simulator.html" class="nav-link">
+        <span class="nav-icon">🛩️</span> 3D Flight Simulator
+      </a>
+      <a href="performance.html" class="nav-link">
+        <span class="nav-icon">📊</span> Aero &amp; 25-State Trim
+      </a>
+      <a href="propulsion.html" class="nav-link active">
+        <span class="nav-icon">🔋</span> Propulsion &amp; 4S Li-Po
+      </a>
+      <a href="envelope.html" class="nav-link">
+        <span class="nav-icon">🔄</span> V-n Envelope &amp; ISA
+      </a>
+      <a href="docs.html" class="nav-link">
+        <span class="nav-icon">📄</span> Technical Docs &amp; Export
+      </a>
+    </nav>
+
+    <div class="sidebar-specs-mini">
+      <div class="ssm-title"><span>PROPULSION SPEC</span> <span>UIUC</span></div>
+      <div class="ssm-row"><span>Propeller</span> <b>APC 10x6E</b></div>
+      <div class="ssm-row"><span>η_prop</span> <b>0.72 (72%)</b></div>
+      <div class="ssm-row"><span>η_elec (BLDC)</span> <b>0.88 (88%)</b></div>
+      <div class="ssm-row"><span>Battery Pack</span> <b>4S 5000mAh</b></div>
+      <div class="ssm-row"><span>Usable Energy</span> <b>59.20 Wh</b></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sys-badge">
+        <div class="sys-dot"></div>
+        <span>MASS CLOSURE: 3.50 KG</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="app-main">
+
+    <header class="top-bar">
+      <div class="top-title">
+        <h1>Electric Propulsion Integration, 4S Li-Po Sizing &amp; Mass Closure</h1>
+        <span class="page-tag">UIUC APC 10x6E &amp; BSERC CHAPTER 8 / 16</span>
+      </div>
+      <div class="top-meta">
+        <div>BATTERY: 4S 14.8V 5.0Ah (74.0 Wh Total)</div>
+        <div style="color:var(--gold-primary);">USABLE (80% DoD): 59.20 Wh</div>
+      </div>
+    </header>
+
+    <div class="page-container">
+
+      <!-- TOP 4 KPI CARDS -->
+      <div class="tele-strip">
+        <div class="tele-box gold">
+          <div class="tele-lbl">Max Cruise Range (α = 10.0°)</div>
+          <div class="tele-val" id="pk-range">28.69 km</div>
+          <div class="tele-foot" id="pk-range-sub">Speed: 12.26 m/s | Endurance: 39.0 min</div>
+        </div>
+        <div class="tele-box emerald">
+          <div class="tele-lbl">Max Loiter Endurance (α = 12.0°)</div>
+          <div class="tele-val" id="pk-endur">41.83 min</div>
+          <div class="tele-foot" id="pk-endur-sub">Speed: 11.21 m/s | Range: 28.13 km</div>
+        </div>
+        <div class="tele-box crimson">
+          <div class="tele-lbl">Min Shaft Power Required</div>
+          <div class="tele-val" id="pk-pshaft">67.69 W</div>
+          <div class="tele-foot" id="pk-pshaft-sub">Aero Pr = 48.74 W | Battery Draw = 84.9 W</div>
+        </div>
+        <div class="tele-box gold">
+          <div class="tele-lbl">All-Up Mass Closure (MTOW)</div>
+          <div class="tele-val">3.50 kg</div>
+          <div class="tele-foot">Weight W = 35.00 N | Wing Loading = 44.44 N/m²</div>
+        </div>
+      </div>
+
+      <!-- LIVE ELECTRICAL-TO-AERODYNAMIC POWER TRANSMISSION CHAIN -->
+      <div class="power-chain-strip">
+        <div class="chain-node">
+          <div class="cn-title">1. 4S Li-Po Total Power (P_batt)</div>
+          <div class="cn-val" id="ch-pbatt">90.96 W</div>
+          <div class="cn-sub" id="ch-ibatt">Current: 6.15 A @ 14.8 V</div>
+        </div>
+
+        <div class="chain-arrow">
+          <div>− 8.0 W Avionics</div>
+          <div style="font-size:16px;">⟶</div>
+          <div>η_elec = <span id="ch-eta-e">88%</span></div>
+        </div>
+
+        <div class="chain-node">
+          <div class="cn-title">2. BLDC Motor Shaft (P_shaft)</div>
+          <div class="cn-val" id="ch-pshaft">73.06 W</div>
+          <div class="cn-sub">T-Motor 2814 Outrunner</div>
+        </div>
+
+        <div class="chain-arrow">
+          <div>APC 10×6E Prop</div>
+          <div style="font-size:16px;">⟶</div>
+          <div>η_prop = <span id="ch-eta-p">72%</span></div>
+        </div>
+
+        <div class="chain-node">
+          <div class="cn-title">3. Useful Aero Power (Pr = Tr·V)</div>
+          <div class="cn-val" id="ch-pr" style="color:var(--crimson-bright);">52.60 W</div>
+          <div class="cn-sub" id="ch-tr">Thrust Tr = 4.29 N @ 12.26 m/s</div>
+        </div>
+
+        <div class="chain-arrow">
+          <div>Usable Energy</div>
+          <div style="font-size:16px;">⟶</div>
+          <div id="ch-wh">59.20 Wh</div>
+        </div>
+
+        <div class="chain-node">
+          <div class="cn-title">4. Mission Endurance &amp; Range</div>
+          <div class="cn-val" id="ch-endur" style="color:var(--emerald-accent);">39.05 min</div>
+          <div class="cn-sub" id="ch-range">Cruise Range: 28.69 km</div>
+        </div>
+      </div>
+
+      <!-- CONTROLS + CHARTS GRID -->
+      <div class="prop-dual-grid">
+
+        <!-- LEFT: INTERACTIVE PROPULSION SIZING CONTROLS -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Propulsion &amp; Battery Parameter Controls</h3>
+            <span class="badge badge-gold">INTERACTIVE</span>
+          </div>
+          <div class="card-body">
+
+            <div class="control-item">
+              <div class="control-label">
+                <span>Operating Angle of Attack (α)</span>
+                <span class="v" id="v-alpha">10.0°</span>
+              </div>
+              <input type="range" id="sl-alpha" min="1.5" max="12.0" step="0.5" value="10.0" />
+            </div>
+
+            <div class="control-item">
+              <div class="control-label">
+                <span>Battery Capacity (4S 14.8V)</span>
+                <span class="v" id="v-cap">5.0 Ah (5000 mAh)</span>
+              </div>
+              <input type="range" id="sl-cap" min="3.0" max="8.0" step="0.5" value="5.0" />
+            </div>
+
+            <div class="control-item">
+              <div class="control-label">
+                <span>Propeller Efficiency (η_prop)</span>
+                <span class="v" id="v-etap">0.72 (72%)</span>
+              </div>
+              <input type="range" id="sl-etap" min="0.60" max="0.82" step="0.01" value="0.72" />
+            </div>
+
+            <div class="control-item">
+              <div class="control-label">
+                <span>Safe Depth of Discharge (DoD)</span>
+                <span class="v" id="v-dod">80%</span>
+              </div>
+              <input type="range" id="sl-dod" min="65" max="90" step="5" value="80" />
+            </div>
+
+            <button class="btn-tactical primary" style="width:100%; margin-top:8px;" onclick="resetPropulsionBaseline()">
+              ↺ Reset to Certified Project 4 Baseline
+            </button>
+
+            <div style="margin-top:16px; padding:12px; background:#080a0f; border:1px solid var(--border-card); font-family:var(--mono-font); font-size:11px; line-height:1.6;">
+              <div style="color:var(--gold-primary); font-weight:700; margin-bottom:4px;">GOVERNING SIZING EQUATIONS</div>
+              <div style="color:var(--slate-muted);">• P_shaft = P_r / η_prop</div>
+              <div style="color:var(--slate-muted);">• P_batt = (P_shaft / η_elec) + P_avionics</div>
+              <div style="color:var(--slate-muted);">• E_usable = V_nom · Q_Ah · f_DoD</div>
+              <div style="color:var(--slate-muted);">• Endurance = (E_usable / P_batt) × 60 min</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- RIGHT: 2 HIGH-PRECISION PROPULSION CHARTS -->
+        <div class="charts-two-col">
+
+          <div class="tactical-card">
+            <div class="card-head">
+              <h3>1. Endurance (min) &amp; Range (km) vs AoA (α)</h3>
+              <span class="badge badge-emerald">MISSION PROFILE</span>
+            </div>
+            <div style="padding:12px;">
+              <canvas id="endurCanvas" class="prop-plot" width="480" height="240"></canvas>
+            </div>
+          </div>
+
+          <div class="tactical-card">
+            <div class="card-head">
+              <h3>2. Power Chain (P_batt, P_shaft, Pr) vs AoA (α)</h3>
+              <span class="badge badge-crimson">WATTS &amp; AMPS</span>
+            </div>
+            <div style="padding:12px;">
+              <canvas id="powerChainCanvas" class="prop-plot" width="480" height="240"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- SUBSYSTEM MASS BREAKDOWN & CG CLOSURE TABLE -->
+      <div class="tactical-card">
+        <div class="card-head">
+          <h3>Subsystem Mass Breakdown &amp; Longitudinal CG Closure (Total MTOW = 3.50 kg)</h3>
+          <span class="badge badge-gold">STATIC MARGIN = 10.0% MAC</span>
+        </div>
+        <div class="card-body" style="display:grid; grid-template-columns: 1fr 1.35fr; gap:24px; align-items:center;">
+
+          <!-- Left Progress Bars -->
+          <div>
+            <div class="progress-bar-wrap">
+              <div class="bar-head"><span>1. Carbon-Epoxy Blended Delta Airframe &amp; Spars</span><b>1.85 kg (52.9%)</b></div>
+              <div class="bar-track"><div class="bar-fill" style="width:52.9%; background:#d4af37;"></div></div>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="bar-head"><span>2. 4S 5000mAh 35C Li-Po Battery Pack</span><b>0.54 kg (15.4%)</b></div>
+              <div class="bar-track"><div class="bar-fill" style="width:15.4%; background:#e63946;"></div></div>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="bar-head"><span>3. EO/IR Gimbal &amp; Multispectral Sensor Payload</span><b>0.50 kg (14.3%)</b></div>
+              <div class="bar-track"><div class="bar-fill" style="width:14.3%; background:#38bdf8;"></div></div>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="bar-head"><span>4. Brushless Outrunner Motor, 40A ESC &amp; APC 10×6E</span><b>0.35 kg (10.0%)</b></div>
+              <div class="bar-track"><div class="bar-fill" style="width:10.0%; background:#10b981;"></div></div>
+            </div>
+            <div class="progress-bar-wrap" style="margin-bottom:0;">
+              <div class="bar-head"><span>5. Pixhawk Autopilot, GPS, Pitot &amp; Digital Metal Servos</span><b>0.26 kg (7.4%)</b></div>
+              <div class="bar-track"><div class="bar-fill" style="width:7.4%; background:#a855f7;"></div></div>
+            </div>
+          </div>
+
+          <!-- Right Engineering Mass & CG Balance Table -->
+          <div class="data-table-wrap">
+            <table class="tactical-table">
+              <thead>
+                <tr>
+                  <th>Subsystem Component</th>
+                  <th>Mass m_i (kg)</th>
+                  <th>Mass Share (%)</th>
+                  <th>Weight W_i (N)</th>
+                  <th>CG Arm x_i (m)</th>
+                  <th>Moment m_i·x_i (kg·m)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Airframe Structure (Carbon Composite Skin &amp; Spars)</td>
+                  <td>1.85</td>
+                  <td>52.86%</td>
+                  <td>18.50</td>
+                  <td>0.410</td>
+                  <td>0.7585</td>
+                </tr>
+                <tr>
+                  <td>Battery Pack (4S 5000 mAh Li-Po, Forward Bay)</td>
+                  <td>0.54</td>
+                  <td>15.43%</td>
+                  <td>5.40</td>
+                  <td>0.340</td>
+                  <td>0.1836</td>
+                </tr>
+                <tr>
+                  <td>Mission Payload (EO/IR Camera &amp; Telemetry Link)</td>
+                  <td>0.50</td>
+                  <td>14.29%</td>
+                  <td>5.00</td>
+                  <td>0.360</td>
+                  <td>0.1800</td>
+                </tr>
+                <tr>
+                  <td>Propulsion Group (Aft Pusher BLDC Motor + Prop)</td>
+                  <td>0.35</td>
+                  <td>10.00%</td>
+                  <td>3.50</td>
+                  <td>0.780</td>
+                  <td>0.2730</td>
+                </tr>
+                <tr>
+                  <td>Avionics &amp; Actuation (Autopilot + Elevon Servos)</td>
+                  <td>0.26</td>
+                  <td>7.43%</td>
+                  <td>2.60</td>
+                  <td>0.440</td>
+                  <td>0.1144</td>
+                </tr>
+                <tr class="highlight-optimum">
+                  <td><strong>TOTAL ALL-UP AIRCRAFT (CLOSURE VERIFIED)</strong></td>
+                  <td><strong>3.50 kg</strong></td>
+                  <td><strong>100.00%</strong></td>
+                  <td><strong>35.00 N</strong></td>
+                  <td><strong>x_cg = 0.431 m</strong></td>
+                  <td><strong>1.5095 kg·m</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <footer class="app-footer">
+      <div>BSERC DEF-SPACE AUTUMN INTERNSHIP 2026 &nbsp;•&nbsp; AIRCRAFT DESIGN PROJECT 4</div>
+      <div>UIUC PROPELLER DATABASE COMPLIANT &nbsp;•&nbsp; MENTOR: DR. J. SARATHKUMAR SEBASTIN</div>
+    </footer>
+
+  </main>
+
+  <script src="assets/js/aero_engine.js"></script>
+  <script>
+    const slAlpha = document.getElementById('sl-alpha');
+    const slCap   = document.getElementById('sl-cap');
+    const slEtap  = document.getElementById('sl-etap');
+    const slDod   = document.getElementById('sl-dod');
+
+    function resetPropulsionBaseline() {
+      slAlpha.value = 10.0;
+      slCap.value   = 5.0;
+      slEtap.value  = 0.72;
+      slDod.value   = 80;
+      updatePropulsion();
+    }
+
+    function computeCustomState(alphaDeg, Q_Ah, etaProp, dodPct) {
+      const base = AERO_CORE.solveFlightState(alphaDeg, 0, 10.0, 0);
+      const etaElec = AERO_CORE.PROPULSION.eta_elec;
+      const P_av = AERO_CORE.PROPULSION.P_avionics;
+      const V_nom = AERO_CORE.PROPULSION.V_batt_nominal;
+      const E_usable = V_nom * Q_Ah * (dodPct / 100.0);
+
+      const Pshaft = base.Pr / etaProp;
+      const Pbatt = (Pshaft / etaElec) + P_av;
+      const Ibatt = Pbatt / V_nom;
+      const endurHr = E_usable / Pbatt;
+      const endurMin = endurHr * 60.0;
+      const rangeKm = (base.V * endurHr * 3600.0) / 1000.0;
+
+      return { ...base, Pshaft, Pbatt, Ibatt, endurMin, rangeKm, E_usable };
+    }
+
+    function updatePropulsion() {
+      const alpha = parseFloat(slAlpha.value);
+      const cap   = parseFloat(slCap.value);
+      const etap  = parseFloat(slEtap.value);
+      const dod   = parseFloat(slDod.value);
+
+      document.getElementById('v-alpha').textContent = `${alpha.toFixed(1)}°`;
+      document.getElementById('v-cap').textContent   = `${cap.toFixed(1)} Ah (${(cap * 1000).toFixed(0)} mAh)`;
+      document.getElementById('v-etap').textContent  = `${etap.toFixed(2)} (${(etap * 100).toFixed(0)}%)`;
+      document.getElementById('v-dod').textContent   = `${dod.toFixed(0)}%`;
+
+      const cur = computeCustomState(alpha, cap, etap, dod);
+      const st10 = computeCustomState(10.0, cap, etap, dod);
+      const st12 = computeCustomState(12.0, cap, etap, dod);
+
+      // Update Top KPIs
+      document.getElementById('pk-range').textContent     = `${st10.rangeKm.toFixed(2)} km`;
+      document.getElementById('pk-range-sub').textContent = `Speed: ${st10.V.toFixed(2)} m/s | Endurance: ${st10.endurMin.toFixed(1)} min`;
+      document.getElementById('pk-endur').textContent     = `${st12.endurMin.toFixed(2)} min`;
+      document.getElementById('pk-endur-sub').textContent = `Speed: ${st12.V.toFixed(2)} m/s | Range: ${st12.rangeKm.toFixed(2)} km`;
+      document.getElementById('pk-pshaft').textContent    = `${st12.Pshaft.toFixed(2)} W`;
+      document.getElementById('pk-pshaft-sub').textContent= `Aero Pr = ${st12.Pr.toFixed(2)} W | Battery Draw = ${st12.Pbatt.toFixed(1)} W`;
+
+      // Update Power Chain Strip
+      document.getElementById('ch-pbatt').textContent  = `${cur.Pbatt.toFixed(2)} W`;
+      document.getElementById('ch-ibatt').textContent  = `Current: ${cur.Ibatt.toFixed(2)} A @ 14.8 V`;
+      document.getElementById('ch-eta-p').textContent  = `${(etap * 100).toFixed(0)}%`;
+      document.getElementById('ch-pshaft').textContent = `${cur.Pshaft.toFixed(2)} W`;
+      document.getElementById('ch-pr').textContent     = `${cur.Pr.toFixed(2)} W`;
+      document.getElementById('ch-tr').textContent     = `Thrust Tr = ${cur.Tr.toFixed(2)} N @ ${cur.V.toFixed(2)} m/s`;
+      document.getElementById('ch-wh').textContent     = `${cur.E_usable.toFixed(2)} Wh`;
+      document.getElementById('ch-endur').textContent  = `${cur.endurMin.toFixed(2)} min`;
+      document.getElementById('ch-range').textContent  = `Cruise Range: ${cur.rangeKm.toFixed(2)} km`;
+
+      drawPropulsionCharts(alpha, cap, etap, dod, cur);
+    }
+
+    function drawPropulsionCharts(alphaSel, cap, etap, dod, curState) {
+      const sweep = [];
+      for (let a = 1.5; a <= 12.01; a += 0.5) {
+        sweep.push(computeCustomState(a, cap, etap, dod));
+      }
+
+      const padL = 44, padR = 18, padT = 22, padB = 28;
+
+      // Chart 1: Endurance & Range vs AoA
+      {
+        const cv = document.getElementById('endurCanvas');
+        const ctx = cv.getContext('2d');
+        const w = cv.width, h = cv.height;
+        const pw = w - padL - padR, ph = h - padT - padB;
+        ctx.clearRect(0, 0, w, h);
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        for (let i = 0; i <= 4; i++) {
+          const y = padT + (i / 4) * ph;
+          ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+        }
+
+        const toX = a => padL + ((a - 1.5) / 10.5) * pw;
+        const toYEndur = m => padT + ph - (Math.min(65, m) / 65.0) * ph;
+        const toYRange = r => padT + ph - (Math.min(50, r) / 50.0) * ph;
+
+        // Endurance curve
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        sweep.forEach((s, idx) => {
+          if (idx === 0) ctx.moveTo(toX(s.alphaDeg), toYEndur(s.endurMin));
+          else ctx.lineTo(toX(s.alphaDeg), toYEndur(s.endurMin));
+        });
+        ctx.stroke();
+
+        // Range curve
+        ctx.strokeStyle = '#d4af37';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        sweep.forEach((s, idx) => {
+          if (idx === 0) ctx.moveTo(toX(s.alphaDeg), toYRange(s.rangeKm));
+          else ctx.lineTo(toX(s.alphaDeg), toYRange(s.rangeKm));
+        });
+        ctx.stroke();
+
+        // Active operating markers
+        ctx.fillStyle = '#e63946';
+        ctx.beginPath(); ctx.arc(toX(alphaSel), toYEndur(curState.endurMin), 5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(toX(alphaSel), toYRange(curState.rangeKm), 5, 0, Math.PI * 2); ctx.fill();
+
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillStyle = '#10b981'; ctx.fillText('— Endurance (min)', padL + 8, padT + 13);
+        ctx.fillStyle = '#d4af37'; ctx.fillText('— Range (km)', padL + 145, padT + 13);
+
+        ctx.fillStyle = '#8b9bb4';
+        [2, 4, 6, 8, 10, 12].forEach(a => {
+          ctx.fillText(a + '°', toX(a) - 6, h - 8);
+        });
+      }
+
+      // Chart 2: Power Chain Breakdown (Pbatt, Pshaft, Pr) vs AoA
+      {
+        const cv = document.getElementById('powerChainCanvas');
+        const ctx = cv.getContext('2d');
+        const w = cv.width, h = cv.height;
+        const pw = w - padL - padR, ph = h - padT - padB;
+        ctx.clearRect(0, 0, w, h);
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        for (let i = 0; i <= 4; i++) {
+          const y = padT + (i / 4) * ph;
+          ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+        }
+
+        const toX = a => padL + ((a - 1.5) / 10.5) * pw;
+        const toYP = p => padT + ph - (Math.min(350, p) / 350.0) * ph;
+
+        function plotP(fnP, col) {
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          sweep.forEach((s, idx) => {
+            if (idx === 0) ctx.moveTo(toX(s.alphaDeg), toYP(fnP(s)));
+            else ctx.lineTo(toX(s.alphaDeg), toYP(fnP(s)));
+          });
+          ctx.stroke();
+        }
+
+        plotP(s => s.Pbatt, '#e63946');
+        plotP(s => s.Pshaft, '#d4af37');
+        plotP(s => s.Pr, '#38bdf8');
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(toX(alphaSel), toYP(curState.Pbatt), 5, 0, Math.PI * 2); ctx.fill();
+
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillStyle = '#e63946'; ctx.fillText('— P_batt (W)', padL + 8, padT + 13);
+        ctx.fillStyle = '#d4af37'; ctx.fillText('— P_shaft (W)', padL + 105, padT + 13);
+        ctx.fillStyle = '#38bdf8'; ctx.fillText('— Aero Pr (W)', padL + 210, padT + 13);
+
+        ctx.fillStyle = '#8b9bb4';
+        [2, 4, 6, 8, 10, 12].forEach(a => {
+          ctx.fillText(a + '°', toX(a) - 6, h - 8);
+        });
+      }
+    }
+
+    [slAlpha, slCap, slEtap, slDod].forEach(el => el.addEventListener('input', updatePropulsion));
+    updatePropulsion();
+  </script>
+</body>
+</html>

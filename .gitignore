@@ -1,0 +1,23 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+*.tmp
+~$*.docx
+~$*.pptx
+~$*.xls
+
+# Optional: Ignore external reference PDFs & helper scripts so GitHub repo stays fast & clean
+Aircraft Design-A Conceptual Approach ( PDFDrive )_220802_090626 (1).pdf
+unmanned-aircraft-design-a-review-of-fundamentals__220802_090900 (1).pdf
+BSERC_Study Material.pdf
+BSERC_Study Material_Scanned Copy.pdf
+Aircraft Design_Project4 (1).docx
+create_presentation.py

@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CD-UAV 3.5 | Trim, Thrust & Power Required Analysis — Aerospace Command Centre</title>
+  <link rel="stylesheet" href="app/assets/css/tactical_theme.css" />
+  <style>
+    /* =========================================================================
+       COMMAND HUB SPECIFIC LAYOUT (MATCHING REFERENCE DESIGN SYSTEM)
+       ========================================================================= */
+    .hero-deck {
+      display: grid;
+      grid-template-columns: 1.15fr 1.35fr 0.88fr;
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 1280px) {
+      .hero-deck { grid-template-columns: 1fr; }
+    }
+
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 6px 0;
+    }
+
+    .editorial-headline {
+      border-left: 3px solid var(--crimson-accent);
+      padding-left: 16px;
+      margin-bottom: 14px;
+    }
+
+    .editorial-headline h1 {
+      font-family: var(--serif-font);
+      font-size: 29px;
+      font-weight: 600;
+      line-height: 1.18;
+      color: #ffffff;
+      letter-spacing: 0.2px;
+    }
+
+    .editorial-headline h1 span.gold-serif {
+      color: var(--gold-light);
+    }
+
+    .editorial-headline p.sub {
+      font-family: var(--sans-font);
+      font-size: 13px;
+      color: var(--gold-light);
+      opacity: 0.85;
+      margin-top: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    .feature-module-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .feature-module-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, rgba(22, 27, 40, 0.88), rgba(12, 15, 22, 0.94));
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      text-decoration: none;
+      color: var(--slate-text);
+      transition: all 0.2s ease;
+    }
+
+    .feature-module-item:hover {
+      border-color: var(--gold-primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(212, 175, 55, 0.16);
+    }
+
+    .feature-module-item.span-2 {
+      grid-column: span 2;
+    }
+
+    .fm-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 4px;
+      background: rgba(212, 175, 55, 0.10);
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: var(--gold-primary);
+      flex-shrink: 0;
+    }
+
+    .fm-text strong {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .fm-text span {
+      font-family: var(--mono-font);
+      font-size: 10px;
+      color: var(--slate-muted);
+    }
+
+    /* CENTER HERO AIRCRAFT STAGE */
+    .hero-aircraft-stage {
+      position: relative;
+      background: radial-gradient(ellipse at 50% 55%, rgba(32, 38, 54, 0.55) 0%, rgba(8, 10, 15, 0.95) 78%);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      min-height: 270px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+    }
+
+    .hero-aircraft-stage img#heroRenderImg {
+      width: 100%;
+      max-width: 560px;
+      height: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.85));
+      transition: transform 0.4s ease;
+    }
+
+    .hero-aircraft-stage:hover img#heroRenderImg {
+      transform: scale(1.025);
+    }
+
+    .stage-mode-bar {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 5;
+    }
+
+    .stage-caption-bar {
+      position: absolute;
+      bottom: 8px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--mono-font);
+      font-size: 10px;
+      color: var(--gold-light);
+      background: rgba(7, 8, 12, 0.78);
+      border: 1px solid rgba(212, 175, 55, 0.22);
+      padding: 5px 10px;
+      border-radius: 3px;
+    }
+
+    /* RIGHT SPECS PANEL */
+    .specs-table-compact {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .specs-table-compact tr {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .specs-table-compact tr:last-child {
+      border-bottom: none;
+    }
+
+    .specs-table-compact td {
+      padding: 7.5px 12px;
+    }
+
+    .specs-table-compact td.s-lbl {
+      color: var(--slate-body);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .specs-table-compact td.s-lbl i {
+      font-style: normal;
+      color: var(--gold-primary);
+      font-family: var(--mono-font);
+      font-size: 11px;
+      width: 16px;
+      text-align: center;
+    }
+
+    .specs-table-compact td.s-val {
+      text-align: right;
+      font-family: var(--mono-font);
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* MIDDLE 3-WINDOW WORKSPACE ROW */
+    .workspace-trio-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 1.05fr 1.25fr;
+      gap: 18px;
+    }
+
+    @media (max-width: 1280px) {
+      .workspace-trio-grid { grid-template-columns: 1fr; }
+    }
+
+    .matlab-body {
+      display: grid;
+      grid-template-columns: 145px 1fr;
+      gap: 12px;
+      padding: 12px;
+      height: 100%;
+    }
+
+    .matlab-tree {
+      background: #080a0f;
+      border: 1px solid var(--border-card);
+      padding: 10px;
+      font-family: var(--mono-font);
+      font-size: 10.5px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .matlab-tree .m-file {
+      color: var(--gold-primary);
+      font-weight: 700;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .matlab-tree .m-step {
+      color: var(--slate-muted);
+      padding: 4px 6px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .matlab-tree .m-step:hover,
+    .matlab-tree .m-step.active {
+      background: rgba(212, 175, 55, 0.14);
+      color: #fff;
+      border-left: 2px solid var(--gold-primary);
+    }
+
+    /* EXCEL MINI CALCULATOR */
+    .excel-toolbar {
+      background: linear-gradient(90deg, #102a1e, #0c1814);
+      border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 5px 12px;
+      display: flex;
+      gap: 14px;
+      font-size: 10.5px;
+      color: #a7f3d0;
+      font-family: var(--sans-font);
+    }
+
+    .excel-grid-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono-font);
+      font-size: 11px;
+    }
+
+    .excel-grid-table th {
+      background: #141923;
+      color: var(--slate-muted);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 5px 6px;
+      text-align: center;
+      font-size: 10px;
+    }
+
+    .excel-grid-table tr.ex-header td {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--gold-light);
+      font-weight: 700;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      padding: 6px 6px;
+    }
+
+    .excel-grid-table td {
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 5.5px 7px;
+      text-align: right;
+      color: #e2e8f0;
+    }
+
+    .excel-grid-table td:first-child {
+      background: #141923;
+      color: var(--slate-muted);
+      text-align: center;
+      width: 26px;
+    }
+
+    /* MINI SIMULATOR WIDGET */
+    .mini-sim-grid {
+      display: grid;
+      grid-template-columns: 155px 1fr 135px;
+      gap: 10px;
+      padding: 12px;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .mini-sim-grid { grid-template-columns: 1fr; }
+    }
+
+    .mini-telem-list {
+      background: #080a0f;
+      border: 1px solid var(--border-card);
+      padding: 8px 10px;
+      font-family: var(--mono-font);
+      font-size: 11px;
+    }
+
+    .mini-telem-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3.5px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .mini-telem-row:last-child { border-bottom: none; }
+    .mini-telem-row span { color: var(--slate-muted); }
+    .mini-telem-row b { color: #fff; }
+
+    /* 5-PANEL ENGINEERING GRAPH STRIP */
+    .five-charts-strip {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr 1fr 1fr 1.05fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 1360px) {
+      .five-charts-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .five-charts-strip { grid-template-columns: 1fr; }
+    }
+
+    /* BOTTOM 4-PANEL MISSION CLOSURE ROW */
+    .bottom-closure-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.78fr 1.15fr 1.12fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 1280px) {
+      .bottom-closure-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .bottom-closure-grid { grid-template-columns: 1fr; }
+    }
+
+    .mass-widget-body {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 12px;
+      padding: 14px;
+      align-items: center;
+    }
+
+    .mass-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--slate-body);
+      margin-bottom: 6px;
+    }
+
+    .mass-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .deliverable-check-list {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .deliv-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5.5px 9px;
+      background: rgba(10, 13, 20, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 3px;
+      text-decoration: none;
+      font-family: var(--mono-font);
+      font-size: 11px;
+      color: var(--slate-text);
+      transition: all 0.18s ease;
+    }
+
+    .deliv-row:hover {
+      border-color: var(--gold-primary);
+      background: rgba(212, 175, 55, 0.10);
+      color: var(--gold-light);
+    }
+
+    .deliv-row span.chk {
+      color: var(--emerald-accent);
+      margin-right: 7px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PERSISTENT TACTICAL SIDEBAR -->
+  <aside class="app-sidebar">
+    <a href="index.html" class="sidebar-header">
+      <div class="sidebar-logo">▲</div>
+      <div class="sidebar-title">
+        <h2>CD-UAV 3.5</h2>
+        <p>BSERC DEF-SPACE '26</p>
+      </div>
+    </a>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Mission Modules</div>
+      <a href="index.html" class="nav-link active">
+        <span class="nav-icon">🏛️</span> Command Hub (Overview)
+      </a>
+      <a href="app/simulator.html" class="nav-link">
+        <span class="nav-icon">🛩️</span> 3D Flight Simulator
+      </a>
+      <a href="app/performance.html" class="nav-link">
+        <span class="nav-icon">📊</span> Aero & 25-State Trim
+      </a>
+      <a href="app/propulsion.html" class="nav-link">
+        <span class="nav-icon">🔋</span> Propulsion & 4S Li-Po
+      </a>
+      <a href="app/envelope.html" class="nav-link">
+        <span class="nav-icon">🔄</span> V-n Envelope & ISA
+      </a>
+      <a href="app/docs.html" class="nav-link">
+        <span class="nav-icon">📄</span> Technical Docs & Export
+      </a>
+    </nav>
+
+    <div class="sidebar-specs-mini">
+      <div class="ssm-title"><span>AIRFRAME DATUM</span> <span>CERTIFIED</span></div>
+      <div class="ssm-row"><span>Configuration</span> <b>Tailless Delta</b></div>
+      <div class="ssm-row"><span>Root / Tip</span> <b>0.90 / 0.15 m</b></div>
+      <div class="ssm-row"><span>Wingspan (b)</span> <b>1.50 m</b></div>
+      <div class="ssm-row"><span>MAC (c̄)</span> <b>0.6143 m</b></div>
+      <div class="ssm-row"><span>Reflex Cm0</span> <b>+0.010</b></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sys-badge">
+        <div class="sys-dot"></div>
+        <span>AERO ENGINE: VERIFIED</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN COMMAND WORKSPACE -->
+  <main class="app-main">
+
+    <div class="page-container">
+
+      <!-- ===================================================================
+           ROW 1: HERO AEROSPACE COMMAND DECK
+           =================================================================== -->
+      <section class="hero-deck">
+
+        <!-- LEFT: EDITORIAL HEADLINE & MODULE SHORTCUTS -->
+        <div class="hero-left">
+          <div class="editorial-headline">
+            <h1>
+              Trim, Thrust Required &amp; Power Required<br />
+              <span class="gold-serif">Analysis of a Tailless Cropped Delta Wing UAV</span>
+            </h1>
+            <p class="sub">A Comprehensive Computational &amp; Analytical Performance Suite</p>
+          </div>
+
+          <div class="feature-module-list">
+            <a href="app/performance.html" class="feature-module-item">
+              <div class="fm-icon">⚖️</div>
+              <div class="fm-text">
+                <strong>Trim &amp; Stability Analysis</strong>
+                <span>(Cm = 0, L = W, T = D)</span>
+              </div>
+            </a>
+
+            <a href="app/propulsion.html" class="feature-module-item">
+              <div class="fm-icon">⚙️</div>
+              <div class="fm-text">
+                <strong>Propulsion &amp; Battery Sizing</strong>
+                <span>(Electric, 4S 5.0Ah Li-Po)</span>
+              </div>
+            </a>
+
+            <a href="app/envelope.html" class="feature-module-item">
+              <div class="fm-icon">🏔️</div>
+              <div class="fm-text">
+                <strong>Multi-Altitude ISA Comparison</strong>
+                <span>(0, 1,000, 2,000 m)</span>
+              </div>
+            </a>
+
+            <a href="app/envelope.html" class="feature-module-item">
+              <div class="fm-icon">🔄</div>
+              <div class="fm-text">
+                <strong>Maneuvering &amp; V-n Envelope</strong>
+                <span>(Coordinated Turn, +3.8g Limit)</span>
+              </div>
+            </a>
+
+            <a href="app/simulator.html" class="feature-module-item span-2">
+              <div class="fm-icon" style="border-color:var(--crimson-accent); color:var(--crimson-bright);">🖥️</div>
+              <div class="fm-text">
+                <strong>Interactive 3D Flight Simulator &amp; Telemetry Deck</strong>
+                <span>(Real-time 3D Elevon Hinging, Flow Streamlines &amp; Multi-Parameter Solver — Click to Launch Full Deck)</span>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- CENTER: PHOTOREALISTIC CD-UAV 3.5 STUDIO RENDER + LIVE 3D TOGGLE -->
+        <div class="hero-aircraft-stage">
+          <div class="stage-mode-bar">
+            <span class="badge badge-gold">AIRFRAME: CD-UAV 3.5 (TAILLESS REFLEX DELTA)</span>
+            <button class="btn-tactical" id="btnToggleHeroMode" style="padding:4px 10px; font-size:10px;" onclick="toggleHeroViewMode()">
+              Switch to Interactive 3D Mesh
+            </button>
+          </div>
+
+          <img id="heroRenderImg" src="app/assets/img/cd_uav_hero.png" alt="CD-UAV 3.5 Tailless Cropped Delta Wing UAV" />
+          <canvas id="hero3dCanvas" width="560" height="270" style="display:none; width:100%; height:260px; cursor:grab;"></canvas>
+
+          <div class="stage-caption-bar">
+            <span>SPAN: 1.50 m &nbsp;|&nbsp; ROOT: 0.90 m &nbsp;|&nbsp; TIP: 0.15 m</span>
+            <span style="color:var(--crimson-bright);">SELF-TRIM: α = 1.96° (δe = 0°) @ 26.95 m/s</span>
+          </div>
+        </div>
+
+        <!-- RIGHT: UAV KEY SPECIFICATIONS PANEL -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>UAV – Key Specifications</h3>
+            <span class="badge badge-gold">PROJECT 4</span>
+          </div>
+          <div style="padding: 6px 4px;">
+            <table class="specs-table-compact">
+              <tbody>
+                <tr>
+                  <td class="s-lbl"><i>⚖</i> All-Up Mass (m)</td>
+                  <td class="s-val">3.50 kg</td>
+                </tr>
+                <tr>
+                  <td class="s-lbl"><i>⬡</i> Wing Area (S)</td>
+                  <td class="s-val">0.7875 m²</td>
+                </tr>
+                <tr>
+                  <td class="s-lbl"><i>⌖</i> Aspect Ratio (AR)</td>
+                  <td class="s-val">2.8571</td>
+                </tr>
+                <tr>
+                  <td class="s-lbl"><i>△</i> Wing Loading (W/S)</td>
+                  <td class="s-val">44.44 N/m²</td>
+                </tr>
+                <tr>
+                  <td class="s-lbl"><i>⛨</i> Static Margin (SM)</td>
+                  <td class="s-val">10.0 % MAC</td>
+                </tr>
+                <tr>
+                  <td class="s-lbl"><i>✦</i> Max L/D (Analytical)</td>
+                  <td class="s-val" style="color:var(--gold-bright);">8.158</td>
+                </tr>
+                <tr>
+                  <td class="s-lbl"><i>⚡</i> Min Power C<sub>L</sub></td>
+                  <td class="s-val" style="color:var(--emerald-accent);">0.8478</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ===================================================================
+           ROW 2: 3 INTERACTIVE APPLICATION WINDOWS (MATLAB, EXCEL, SIMULATOR)
+           =================================================================== -->
+      <section class="workspace-trio-grid">
+
+        <!-- WINDOW 1: MATLAB ANALYSIS SUITE -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>MATLAB Analysis Suite</h3>
+            <a href="Cropped_Delta_UAV_Analysis.m" download class="badge badge-gold" style="text-decoration:none;">⬇ .M SCRIPT</a>
+          </div>
+          <div class="matlab-body">
+            <div class="matlab-tree">
+              <div class="m-file">Cropped_Delta_UAV_Analysis.m</div>
+              <div class="m-step active" onclick="switchMatlabPlot('clcd', this)">CL, CD &amp; L/D vs α</div>
+              <div class="m-step" onclick="switchMatlabPlot('trpr', this)">Thrust &amp; Power vs V</div>
+              <div class="m-step" onclick="switchMatlabPlot('endur', this)">Endurance CL^1.5/CD</div>
+              <div class="m-step" onclick="window.location.href='app/docs.html'">12 High-Res Plots →</div>
+            </div>
+            <div style="display:flex; flex-direction:column; justify-content:space-between;">
+              <div style="font-family:var(--mono-font); font-size:10.5px; color:var(--gold-light); text-align:center; margin-bottom:4px;" id="matlabPlotTitle">
+                C_L, C_D and C_L/C_D vs Angle of Attack
+              </div>
+              <canvas id="matlabMiniCanvas" width="320" height="175" style="width:100%; height:175px; background:#07090e; border:1px solid var(--border-card);"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- WINDOW 2: EXCEL MODEL – ENGINEERING CALCULATOR -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Excel Model – Engineering Calculator</h3>
+            <a href="Cropped_Delta_UAV_Excel_Model.xls" download class="badge badge-emerald" style="text-decoration:none;">⬇ .XLS MODEL</a>
+          </div>
+          <div class="excel-toolbar">
+            <span><b>File</b></span>
+            <span>Home</span>
+            <span>Insert</span>
+            <span>Formulas</span>
+            <span>Data</span>
+            <span style="margin-left:auto; font-family:var(--mono-font); color:#6ee7b7;">fx = -(Cm0 + Cma*RADIANS(A3))/Cmde</span>
+          </div>
+          <div style="padding: 10px; overflow-x:auto;">
+            <table class="excel-grid-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>A</th>
+                  <th>B</th>
+                  <th>C</th>
+                  <th>D</th>
+                  <th>E</th>
+                  <th>F</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="ex-header">
+                  <td>2</td>
+                  <td>α (deg)</td>
+                  <td>δe,trim (°)</td>
+                  <td>CL,trim</td>
+                  <td>V (m/s)</td>
+                  <td>Tr (N)</td>
+                  <td>Pr (W)</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>0.0</td>
+                  <td>+1.43</td>
+                  <td>0.0066</td>
+                  <td>104.66</td>
+                  <td>158.52</td>
+                  <td>16590.0</td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>1.0</td>
+                  <td>+0.70</td>
+                  <td>0.0542</td>
+                  <td>36.59</td>
+                  <td>19.61</td>
+                  <td>717.29</td>
+                </tr>
+                <tr style="background:rgba(212,175,55,0.12);">
+                  <td>5</td>
+                  <td style="color:var(--gold-bright); font-weight:700;">1.96</td>
+                  <td style="color:var(--gold-bright); font-weight:700;">0.00</td>
+                  <td>0.1000</td>
+                  <td>26.95</td>
+                  <td>10.94</td>
+                  <td>294.75</td>
+                </tr>
+                <tr style="background:rgba(16,185,129,0.12);">
+                  <td>6</td>
+                  <td style="color:#6ee7b7; font-weight:700;">10.0</td>
+                  <td>-5.87</td>
+                  <td>0.4825</td>
+                  <td>12.26</td>
+                  <td style="color:#6ee7b7; font-weight:700;">4.29</td>
+                  <td>52.61</td>
+                </tr>
+                <tr style="background:rgba(230,57,70,0.14);">
+                  <td>7</td>
+                  <td style="color:#ff8a93; font-weight:700;">12.0</td>
+                  <td>-7.33</td>
+                  <td>0.5777</td>
+                  <td>11.21</td>
+                  <td>4.35</td>
+                  <td style="color:#ff8a93; font-weight:700;">48.74</td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+              <span style="font-family:var(--mono-font); font-size:10px; color:var(--slate-muted);">Showing key milestones from 25-state table</span>
+              <a href="app/performance.html" class="btn-tactical" style="padding:4px 10px; font-size:10px;">Open Full 25-State Solver →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- WINDOW 3: INTERACTIVE FLIGHT SIMULATOR (WEBGL / HTML5) -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Interactive Flight Simulator (WebGL / HTML5)</h3>
+            <a href="app/simulator.html" class="badge badge-crimson" style="text-decoration:none;">FULL SCREEN ↗</a>
+          </div>
+          <div class="mini-sim-grid">
+            <!-- Sliders -->
+            <div>
+              <div class="control-item" style="margin-bottom:8px;">
+                <div class="control-label" style="font-size:10.5px;"><span>α (deg)</span><span class="v" id="ms-val-a" style="font-size:11px;">6.0°</span></div>
+                <input type="range" id="ms-sl-a" min="0" max="12" step="0.5" value="6.0" />
+              </div>
+              <div class="control-item" style="margin-bottom:8px;">
+                <div class="control-label" style="font-size:10.5px;"><span>Altitude (m)</span><span class="v" id="ms-val-h" style="font-size:11px;">1000</span></div>
+                <input type="range" id="ms-sl-h" min="0" max="2000" step="250" value="1000" />
+              </div>
+              <div class="control-item" style="margin-bottom:8px;">
+                <div class="control-label" style="font-size:10.5px;"><span>Static Margin (%)</span><span class="v" id="ms-val-sm" style="font-size:11px;">10%</span></div>
+                <input type="range" id="ms-sl-sm" min="5" max="15" step="1" value="10" />
+              </div>
+              <div class="control-item" style="margin-bottom:0;">
+                <div class="control-label" style="font-size:10.5px;"><span>Bank Angle (°)</span><span class="v" id="ms-val-bank" style="font-size:11px;">30°</span></div>
+                <input type="range" id="ms-sl-bank" min="0" max="45" step="5" value="30" />
+              </div>
+            </div>
+
+            <!-- 3D Mini Viewport -->
+            <div style="background:#06080d; border:1px solid var(--border-card); position:relative; height:172px; border-radius:3px; overflow:hidden;">
+              <canvas id="miniSimCanvas" width="240" height="172" style="width:100%; height:172px; display:block; cursor:grab;"></canvas>
+              <div style="position:absolute; bottom:4px; left:6px; right:6px; display:flex; gap:4px; justify-content:center;">
+                <span class="badge badge-crimson" style="font-size:8.5px; padding:2px 6px;">Flow Field</span>
+                <span class="badge badge-gold" style="font-size:8.5px; padding:2px 6px;">Elevons</span>
+                <span class="badge badge-gold" style="font-size:8.5px; padding:2px 6px;">Vectors</span>
+              </div>
+            </div>
+
+            <!-- Live Telemetry Box -->
+            <div class="mini-telem-list">
+              <div style="color:var(--crimson-bright); font-weight:700; font-size:10px; margin-bottom:4px; text-transform:uppercase;">Live Telemetry</div>
+              <div class="mini-telem-row"><span>V</span><b id="ms-t-v">17.85 m/s</b></div>
+              <div class="mini-telem-row"><span>C_L</span><b id="ms-t-cl">0.291</b></div>
+              <div class="mini-telem-row"><span>C_D</span><b id="ms-t-cd">0.041</b></div>
+              <div class="mini-telem-row"><span>T_r</span><b id="ms-t-tr">5.67 N</b></div>
+              <div class="mini-telem-row"><span>P_r</span><b id="ms-t-pr">101.2 W</b></div>
+              <div class="mini-telem-row"><span>L/D</span><b id="ms-t-ld" style="color:var(--gold-bright);">7.17</b></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ===================================================================
+           ROW 3: 5 PRECISION ENGINEERING GRAPH PANELS
+           =================================================================== -->
+      <section class="five-charts-strip">
+
+        <!-- PANEL 1: 2D PLANFORM & LAYOUT CAD DRAWING -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Planform &amp; Layout</h3>
+          </div>
+          <div style="padding:10px; text-align:center;">
+            <div style="font-size:10px; color:var(--slate-muted); margin-bottom:4px; font-family:var(--mono-font);">(Scalable 2D Engineering Drawing)</div>
+            <svg viewBox="0 0 280 165" style="width:100%; height:150px; background:#07090e; border:1px solid var(--border-card);">
+              <!-- Grid -->
+              <defs>
+                <pattern id="cadGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(212,175,55,0.07)" stroke-width="0.7"/>
+                </pattern>
+              </defs>
+              <rect width="280" height="165" fill="url(#cadGrid)" />
+              <!-- Span Dimension b = 1.50 m -->
+              <line x1="40" y1="22" x2="240" y2="22" stroke="#d4af37" stroke-width="1" />
+              <line x1="40" y1="17" x2="40" y2="27" stroke="#d4af37" stroke-width="1" />
+              <line x1="240" y1="17" x2="240" y2="27" stroke="#d4af37" stroke-width="1" />
+              <text x="140" y="17" fill="#f3e5ab" font-size="9.5" font-family="JetBrains Mono" text-anchor="middle">b = 1.50 m</text>
+
+              <!-- Cropped Delta Polygon: Apex(140,34), TipL(40,114), TipL_TE(40,128), TipR_TE(240,128), TipR(240,114) -->
+              <polygon points="140,34 240,112 240,128 40,128 40,112" fill="rgba(30,38,56,0.85)" stroke="#e2e8f0" stroke-width="1.5" />
+              <!-- Centerline Cr = 0.90m -->
+              <line x1="140" y1="34" x2="140" y2="128" stroke="#d4af37" stroke-dasharray="3,2" stroke-width="1" />
+              <!-- Elevons (Crimson) -->
+              <rect x="46" y="120" width="76" height="8" fill="rgba(230,57,70,0.75)" stroke="#ff6b78" stroke-width="0.9" />
+              <rect x="158" y="120" width="76" height="8" fill="rgba(230,57,70,0.75)" stroke="#ff6b78" stroke-width="0.9" />
+              <!-- MAC Dashed Chord at y_MAC -->
+              <line x1="178" y1="64" x2="178" y2="128" stroke="#f3e5ab" stroke-dasharray="3,2" stroke-width="1.3" />
+              <!-- CG and NP Markers -->
+              <circle cx="140" cy="84" r="4" fill="#e63946" stroke="#fff" stroke-width="1" />
+              <circle cx="140" cy="94" r="4" fill="#d4af37" stroke="#000" stroke-width="1" />
+              <!-- Labels -->
+              <text x="18" y="84" fill="#cbd5e1" font-size="8.5" font-family="JetBrains Mono">Cr=0.90m</text>
+              <text x="244" y="123" fill="#cbd5e1" font-size="8.5" font-family="JetBrains Mono">Ct=0.15m</text>
+              <!-- Legend -->
+              <circle cx="52" cy="150" r="3.5" fill="#e63946" />
+              <text x="60" y="153" fill="#cbd5e1" font-size="8.5" font-family="JetBrains Mono">CG (x_cg)</text>
+              <circle cx="122" cy="150" r="3.5" fill="#d4af37" />
+              <text x="130" y="153" fill="#cbd5e1" font-size="8.5" font-family="JetBrains Mono">NP (x_np)</text>
+              <line x1="190" y1="150" x2="206" y2="150" stroke="#f3e5ab" stroke-dasharray="3,2" stroke-width="1.3" />
+              <text x="210" y="153" fill="#cbd5e1" font-size="8.5" font-family="JetBrains Mono">MAC (c̄)</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- PANEL 2: DRAG POLAR (PARABOLIC) -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Drag Polar (Parabolic)</h3>
+          </div>
+          <div style="padding:10px;">
+            <div style="font-size:10px; color:var(--slate-muted); margin-bottom:4px; font-family:var(--mono-font); text-align:center;">CD = 0.030 + 0.1252 · CL²</div>
+            <canvas id="hubDragPolarCanvas" width="240" height="150" style="width:100%; height:150px; background:#07090e; border:1px solid var(--border-card);"></canvas>
+          </div>
+        </div>
+
+        <!-- PANEL 3: TRIM ELEVON VS ANGLE OF ATTACK -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Trim Elevon vs AoA</h3>
+          </div>
+          <div style="padding:10px;">
+            <div style="font-size:10px; color:var(--slate-muted); margin-bottom:4px; font-family:var(--mono-font); text-align:center;">δe,trim (deg) vs α (0° → 12°)</div>
+            <canvas id="hubElevonCanvas" width="240" height="150" style="width:100%; height:150px; background:#07090e; border:1px solid var(--border-card);"></canvas>
+          </div>
+        </div>
+
+        <!-- PANEL 4: V-n DIAGRAM (MANEUVERING ENVELOPE) -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>V-n Diagram (Envelope)</h3>
+          </div>
+          <div style="padding:10px;">
+            <div style="font-size:10px; color:var(--crimson-bright); margin-bottom:4px; font-family:var(--mono-font); text-align:center;">Structural Limit: +3.8 g / -1.52 g</div>
+            <canvas id="hubVnCanvas" width="240" height="150" style="width:100%; height:150px; background:#07090e; border:1px solid var(--border-card);"></canvas>
+          </div>
+        </div>
+
+        <!-- PANEL 5: MULTI-ALTITUDE ISA COMPARISON -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Multi-Altitude ISA</h3>
+          </div>
+          <div style="padding:10px;">
+            <div style="font-size:10px; color:var(--gold-light); margin-bottom:4px; font-family:var(--mono-font); text-align:center;">0 m, 1,000 m, 2,000 m (V vs α)</div>
+            <canvas id="hubAltCanvas" width="240" height="150" style="width:100%; height:150px; background:#07090e; border:1px solid var(--border-card);"></canvas>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ===================================================================
+           ROW 4: BOTTOM MISSION CLOSURE & DELIVERABLES STRIP
+           =================================================================== -->
+      <section class="bottom-closure-grid">
+
+        <!-- 1. COMPONENT MASS BREAKDOWN (3.50 KG) -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Component Mass Breakdown (3.50 kg)</h3>
+          </div>
+          <div class="mass-widget-body">
+            <div style="position:relative; width:125px; height:125px;">
+              <canvas id="hubMassDonut" width="125" height="125"></canvas>
+              <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none;">
+                <b style="font-family:var(--mono-font); font-size:14px; color:#fff;">3.50 kg</b>
+                <span style="font-size:9.5px; color:var(--slate-muted);">(Total)</span>
+              </div>
+            </div>
+            <div>
+              <div class="mass-legend-item"><span class="mass-dot" style="background:#e63946;"></span><span>Airframe Structure – <b>1.85 kg</b> (52.9%)</span></div>
+              <div class="mass-legend-item"><span class="mass-dot" style="background:#d4af37;"></span><span>Motor &amp; Propeller – <b>0.35 kg</b> (10.0%)</span></div>
+              <div class="mass-legend-item"><span class="mass-dot" style="background:#9e8230;"></span><span>Battery (4S 5.0 Ah) – <b>0.54 kg</b> (15.4%)</span></div>
+              <div class="mass-legend-item"><span class="mass-dot" style="background:#64748b;"></span><span>Avionics &amp; Servos – <b>0.26 kg</b> (7.4%)</span></div>
+              <div class="mass-legend-item" style="margin-bottom:0;"><span class="mass-dot" style="background:#cbd5e1;"></span><span>Payload / Sensors – <b>0.50 kg</b> (14.3%)</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. FLIGHT ENDURANCE & RANGE -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>Flight Endurance &amp; Range</h3>
+          </div>
+          <div style="padding:16px; display:flex; flex-direction:column; justify-content:center; gap:16px; flex:1;">
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div class="fm-icon" style="width:42px; height:42px; border-radius:50%; font-size:18px;">⏱️</div>
+              <div>
+                <div style="font-size:11px; color:var(--slate-muted);">Endurance (α = 12.0° Loiter)</div>
+                <div style="font-family:var(--serif-font); font-size:26px; font-weight:700; color:var(--gold-light); line-height:1.1;">41.83 min</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div class="fm-icon" style="width:42px; height:42px; border-radius:50%; font-size:18px; border-color:var(--crimson-accent); color:var(--crimson-bright);">📍</div>
+              <div>
+                <div style="font-size:11px; color:var(--slate-muted);">Range (α = 12° / Max L/D 10°)</div>
+                <div style="font-family:var(--serif-font); font-size:26px; font-weight:700; color:#fff; line-height:1.1;">28.13 – 28.69 km</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. REPORT & DEFENSE PRESENTATION SHOWCASE -->
+        <div class="tactical-card" style="overflow:hidden;">
+          <div class="card-head">
+            <h3>Executive Report &amp; Viva Deck</h3>
+            <span class="badge badge-gold">READY</span>
+          </div>
+          <div style="position:relative; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:10px; background:#080a0f;">
+            <img src="app/assets/img/deliverables_showcase.png" alt="Final Report and Presentation Deck" style="width:100%; max-height:118px; object-fit:contain;" />
+            <div style="display:flex; gap:8px; width:100%; margin-top:6px;">
+              <a href="Aircraft_Design_Project4_Final_Report.docx" download class="btn-tactical primary" style="flex:1; padding:6px 8px; font-size:10px;">⬇ Final Report (.DOCX)</a>
+              <a href="Cropped_Delta_UAV_Presentation.pptx" download class="btn-tactical btn-crimson" style="flex:1; padding:6px 8px; font-size:10px;">⬇ Defense Deck (.PPTX)</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. PROJECT DELIVERABLES CHECKLIST -->
+        <div class="tactical-card">
+          <div class="card-head">
+            <h3>📁 Project Deliverables</h3>
+            <a href="app/docs.html" class="badge badge-gold" style="text-decoration:none;">ALL FILES</a>
+          </div>
+          <div class="deliverable-check-list">
+            <a href="Cropped_Delta_UAV_Analysis.m" download class="deliv-row">
+              <span><span class="chk">✔</span>Cropped_Delta_UAV_Analysis.m</span>
+              <span>.M</span>
+            </a>
+            <a href="Cropped_Delta_UAV_Excel_Model.xls" download class="deliv-row">
+              <span><span class="chk">✔</span>Cropped_Delta_UAV_Excel_Model.xls</span>
+              <span>.XLS</span>
+            </a>
+            <a href="Cropped_Delta_UAV_Trim_Table.csv" download class="deliv-row">
+              <span><span class="chk">✔</span>Cropped_Delta_UAV_Trim_Table.csv</span>
+              <span>.CSV</span>
+            </a>
+            <a href="app/simulator.html" class="deliv-row">
+              <span><span class="chk">✔</span>Interactive_3D_Flight_Simulator</span>
+              <span>WEBGL</span>
+            </a>
+            <a href="Aircraft_Design_Project4_Final_Report.docx" download class="deliv-row">
+              <span><span class="chk">✔</span>Aircraft_Design_Project4_Final_Report.docx</span>
+              <span>.DOCX</span>
+            </a>
+            <a href="Cropped_Delta_UAV_Presentation.pptx" download class="deliv-row">
+              <span><span class="chk">✔</span>Cropped_Delta_UAV_Presentation.pptx</span>
+              <span>.PPTX</span>
+            </a>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+    <footer class="app-footer">
+      <div>BSERC DEF-SPACE AUTUMN INTERNSHIP PROGRAMME 2026 &nbsp;•&nbsp; AIRCRAFT DESIGN PROJECT 4</div>
+      <div>MENTOR: DR. J. SARATHKUMAR SEBASTIN (VIT BHOPAL UNIVERSITY) &nbsp;•&nbsp; ZERO FAKE DATA CERTIFIED</div>
+    </footer>
+
+  </main>
+
+  <!-- CORE AERODYNAMIC ENGINE & COMMAND HUB INTERACTIVE CHARTS -->
+  <script src="app/assets/js/aero_engine.js"></script>
+  <script>
+    const fullSweep = AERO_CORE.generateFullSweep(0, 10.0);
+    let hero3dActive = false;
+    let heroRotX = -0.30, heroRotY = 0.52;
+    let miniRotX = -0.28, miniRotY = 0.48;
+
+    function toggleHeroViewMode() {
+      hero3dActive = !hero3dActive;
+      const img = document.getElementById('heroRenderImg');
+      const can = document.getElementById('hero3dCanvas');
+      const btn = document.getElementById('btnToggleHeroMode');
+      if (hero3dActive) {
+        img.style.display = 'none';
+        can.style.display = 'block';
+        btn.textContent = 'Switch to Studio Render';
+      } else {
+        img.style.display = 'block';
+        can.style.display = 'none';
+        btn.textContent = 'Switch to Interactive 3D Mesh';
+      }
+    }
+
+    // 1. MATLAB Mini Plot Switcher
+    let currentMatlabMode = 'clcd';
+    function switchMatlabPlot(mode, el) {
+      currentMatlabMode = mode;
+      document.querySelectorAll('.matlab-tree .m-step').forEach(s => s.classList.remove('active'));
+      if (el) el.classList.add('active');
+      drawMatlabMiniPlot();
+    }
+
+    function drawMatlabMiniPlot() {
+      const c = document.getElementById('matlabMiniCanvas');
+      const ctx = c.getContext('2d');
+      const w = c.width, h = c.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const padL = 34, padR = 14, padT = 16, padB = 26;
+      const pw = w - padL - padR, ph = h - padT - padB;
+
+      // Grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = padT + (i / 4) * ph;
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+      }
+
+      const titleEl = document.getElementById('matlabPlotTitle');
+      if (currentMatlabMode === 'clcd') {
+        titleEl.textContent = 'C_L, C_D and C_L/C_D vs Angle of Attack';
+        // Plot L/D (0..10), CL*10, CD*20
+        function plotLine(fnY, maxVal, color) {
+          ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+          fullSweep.forEach((s, idx) => {
+            const x = padL + (s.alphaDeg / 12.0) * pw;
+            const y = padT + ph - (fnY(s) / maxVal) * ph;
+            if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+        }
+        plotLine(s => s.LD, 10.0, '#d4af37');
+        plotLine(s => s.CL * 10, 10.0, '#ffffff');
+        plotLine(s => s.CD * 25, 10.0, '#e63946');
+      } else if (currentMatlabMode === 'trpr') {
+        titleEl.textContent = 'Thrust Required (N) & Power (W/10) vs α';
+        function plotLine(fnY, maxVal, color) {
+          ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+          fullSweep.slice(2).forEach((s, idx) => {
+            const x = padL + (s.alphaDeg / 12.0) * pw;
+            const y = padT + ph - (Math.min(maxVal, fnY(s)) / maxVal) * ph;
+            if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+        }
+        plotLine(s => s.Tr, 20.0, '#e63946');
+        plotLine(s => s.Pr / 15.0, 20.0, '#d4af37');
+      } else {
+        titleEl.textContent = 'Endurance Parameter (C_L^1.5 / C_D) vs α';
+        ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2.2; ctx.beginPath();
+        fullSweep.forEach((s, idx) => {
+          const x = padL + (s.alphaDeg / 12.0) * pw;
+          const y = padT + ph - (s.endurParam / 7.0) * ph;
+          if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      }
+
+      // X-axis ticks
+      ctx.fillStyle = '#8b9bb4';
+      ctx.font = '9px JetBrains Mono';
+      for (let a = 0; a <= 12; a += 4) {
+        const x = padL + (a / 12.0) * pw;
+        ctx.fillText(a + '°', x - 6, h - 8);
+      }
+    }
+
+    // 2. Draw 4 Engineering Strip Canvases
+    function drawHubEngineeringStrip() {
+      // (A) Drag Polar
+      {
+        const c = document.getElementById('hubDragPolarCanvas');
+        const ctx = c.getContext('2d');
+        const w = c.width, h = c.height;
+        const padL = 34, padR = 12, padT = 14, padB = 24;
+        const pw = w - padL - padR, ph = h - padT - padB;
+        ctx.clearRect(0, 0, w, h);
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        for (let i = 0; i <= 3; i++) {
+          const y = padT + (i / 3) * ph;
+          ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+        }
+
+        ctx.strokeStyle = '#e63946'; ctx.lineWidth = 2.2; ctx.beginPath();
+        for (let cl = 0; cl <= 1.01; cl += 0.05) {
+          const cd = 0.030 + 0.1252 * cl * cl;
+          const x = padL + (cl / 1.0) * pw;
+          const y = padT + ph - ((cd - 0.02) / 0.16) * ph;
+          if (cl === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Points from sweep
+        ctx.fillStyle = '#d4af37';
+        fullSweep.forEach((s, idx) => {
+          if (idx % 4 === 0) {
+            const x = padL + (s.CL / 1.0) * pw;
+            const y = padT + ph - ((s.CD - 0.02) / 0.16) * ph;
+            ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2); ctx.fill();
+          }
+        });
+
+        ctx.fillStyle = '#8b9bb4'; ctx.font = '9px JetBrains Mono';
+        ctx.fillText('CL: 0.0', padL, h - 6);
+        ctx.fillText('1.0', w - 26, h - 6);
+      }
+
+      // (B) Trim Elevon vs AoA
+      {
+        const c = document.getElementById('hubElevonCanvas');
+        const ctx = c.getContext('2d');
+        const w = c.width, h = c.height;
+        const padL = 34, padR = 12, padT = 14, padB = 24;
+        const pw = w - padL - padR, ph = h - padT - padB;
+        ctx.clearRect(0, 0, w, h);
+
+        // Zero line
+        const yZero = padT + (2.0 / 10.0) * ph;
+        ctx.strokeStyle = 'rgba(212,175,55,0.3)';
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(padL, yZero); ctx.lineTo(w - padR, yZero); ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = '#e63946'; ctx.lineWidth = 2.2; ctx.beginPath();
+        fullSweep.forEach((s, idx) => {
+          const x = padL + (s.alphaDeg / 12.0) * pw;
+          const y = padT + ((2.0 - s.deDeg) / 10.0) * ph;
+          if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Self-trim dot at 1.96 deg
+        const xSelf = padL + (1.962 / 12.0) * pw;
+        ctx.fillStyle = '#d4af37';
+        ctx.beginPath(); ctx.arc(xSelf, yZero, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillText('δe=0° (1.96°)', xSelf + 6, yZero - 4);
+      }
+
+      // (C) V-n Envelope Mini
+      {
+        const c = document.getElementById('hubVnCanvas');
+        const ctx = c.getContext('2d');
+        const w = c.width, h = c.height;
+        const padL = 30, padR = 12, padT = 14, padB = 24;
+        const pw = w - padL - padR, ph = h - padT - padB;
+        ctx.clearRect(0, 0, w, h);
+
+        const toX = v => padL + (v / 48.0) * pw;
+        const toY = n => padT + ((4.5 - n) / 6.8) * ph;
+
+        // Zero g line
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.beginPath(); ctx.moveTo(padL, toY(0)); ctx.lineTo(w - padR, toY(0)); ctx.stroke();
+
+        // Envelope fill
+        ctx.fillStyle = 'rgba(230, 57, 70, 0.14)';
+        ctx.strokeStyle = '#e63946';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(toX(0), toY(0));
+        for (let v = 0; v <= 13.52; v += 1.0) {
+          const n = Math.min(3.8, (0.5 * 1.225 * v * v * 0.7875 * 1.2) / 35.0);
+          ctx.lineTo(toX(v), toY(n));
+        }
+        ctx.lineTo(toX(45), toY(3.8));
+        ctx.lineTo(toX(45), toY(-1.52));
+        ctx.lineTo(toX(11.6), toY(-1.52));
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#f3e5ab'; ctx.font = '9px JetBrains Mono';
+        ctx.fillText('+3.8g', toX(22), toY(3.8) - 4);
+      }
+
+      // (D) Multi-Altitude ISA Comparison
+      {
+        const c = document.getElementById('hubAltCanvas');
+        const ctx = c.getContext('2d');
+        const w = c.width, h = c.height;
+        const padL = 30, padR = 12, padT = 14, padB = 24;
+        const pw = w - padL - padR, ph = h - padT - padB;
+        ctx.clearRect(0, 0, w, h);
+
+        const alts = [
+          { h: 0, col: '#ffffff', lbl: '0m' },
+          { h: 1000, col: '#d4af37', lbl: '1000m' },
+          { h: 2000, col: '#e63946', lbl: '2000m' }
+        ];
+
+        alts.forEach(cfg => {
+          const sw = AERO_CORE.generateFullSweep(cfg.h, 10.0).slice(4); // alpha >= 2 deg
+          ctx.strokeStyle = cfg.col;
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          sw.forEach((s, idx) => {
+            const x = padL + ((s.alphaDeg - 2.0) / 10.0) * pw;
+            const y = padT + ph - ((s.V - 10.0) / 24.0) * ph;
+            if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+        });
+      }
+
+      // (E) Mass Breakdown Donut
+      {
+        const c = document.getElementById('hubMassDonut');
+        const ctx = c.getContext('2d');
+        const cx = 62.5, cy = 62.5, rOut = 54, rIn = 36;
+        const slices = [
+          { pct: 0.529, col: '#e63946' },
+          { pct: 0.100, col: '#d4af37' },
+          { pct: 0.154, col: '#9e8230' },
+          { pct: 0.074, col: '#64748b' },
+          { pct: 0.143, col: '#cbd5e1' }
+        ];
+        let startA = -Math.PI / 2;
+        slices.forEach(sl => {
+          const endA = startA + sl.pct * Math.PI * 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, rOut, startA, endA - 0.03);
+          ctx.arc(cx, cy, rIn, endA - 0.03, startA, true);
+          ctx.closePath();
+          ctx.fillStyle = sl.col;
+          ctx.fill();
+          startA = endA;
+        });
+      }
+    }
+
+    // 3. Mini Interactive Simulator Loop
+    const msA = document.getElementById('ms-sl-a');
+    const msH = document.getElementById('ms-sl-h');
+    const msSM = document.getElementById('ms-sl-sm');
+    const msBank = document.getElementById('ms-sl-bank');
+    const miniCan = document.getElementById('miniSimCanvas');
+    const heroCan = document.getElementById('hero3dCanvas');
+
+    function updateMiniSim() {
+      const a = parseFloat(msA.value);
+      const h = parseFloat(msH.value);
+      const sm = parseFloat(msSM.value);
+      const bank = parseFloat(msBank.value);
+      const st = AERO_CORE.solveFlightState(a, h, sm, bank);
+
+      document.getElementById('ms-val-a').textContent = a.toFixed(1) + '°';
+      document.getElementById('ms-val-h').textContent = h.toFixed(0);
+      document.getElementById('ms-val-sm').textContent = sm.toFixed(0) + '%';
+      document.getElementById('ms-val-bank').textContent = bank.toFixed(0) + '°';
+
+      document.getElementById('ms-t-v').textContent = st.V.toFixed(2) + ' m/s';
+      document.getElementById('ms-t-cl').textContent = st.CL.toFixed(3);
+      document.getElementById('ms-t-cd').textContent = st.CD.toFixed(3);
+      document.getElementById('ms-t-tr').textContent = st.Tr.toFixed(2) + ' N';
+      document.getElementById('ms-t-pr').textContent = st.Pr.toFixed(1) + ' W';
+      document.getElementById('ms-t-ld').textContent = st.LD.toFixed(2);
+
+      window._miniState = st;
+    }
+
+    [msA, msH, msSM, msBank].forEach(el => el.addEventListener('input', updateMiniSim));
+
+    function animateHub() {
+      const st = window._miniState || AERO_CORE.solveFlightState(6.0, 1000, 10, 30);
+      miniRotY += 0.004;
+      AERO_CORE.renderStealthDelta3D(miniCan, st, miniRotX, miniRotY, {
+        showFlow: true, showVectors: false, showElevons: true, showGrid: true
+      });
+
+      if (hero3dActive) {
+        heroRotY += 0.005;
+        AERO_CORE.renderStealthDelta3D(heroCan, st, heroRotX, heroRotY, {
+          showFlow: true, showVectors: true, showElevons: true, showGrid: true
+        });
+      }
+      requestAnimationFrame(animateHub);
+    }
+
+    drawMatlabMiniPlot();
+    drawHubEngineeringStrip();
+    updateMiniSim();
+    animateHub();
+  </script>
+</body>
+</html>
